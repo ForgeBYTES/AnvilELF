@@ -19,7 +19,7 @@ check:
 		black --line-length 79 --check /src && \
 		flake8 /src && \
 		mypy --explicit-package-bases /src && \
-		python -m pytest -v /src/tests"
+		python -m pytest -vv /src/tests"
 
 fix:
 	@$(DOCKER_EXEC) /bin/bash -c " \

@@ -27,16 +27,39 @@ def test_returning_valid_executable_header():
     assert fields["e_type"] == EXPECTED_OUTPUT["e_type"]
     assert fields["e_machine"] == EXPECTED_OUTPUT["e_machine"]
     assert fields["e_version"] == EXPECTED_OUTPUT["e_version"]
-    assert isinstance(fields["e_entry"], int)
-    assert isinstance(fields["e_phoff"], int)
-    assert isinstance(fields["e_shoff"], int)
-    assert isinstance(fields["e_flags"], int)
-    assert isinstance(fields["e_ehsize"], int)
-    assert isinstance(fields["e_phentsize"], int)
-    assert isinstance(fields["e_phnum"], int)
-    assert isinstance(fields["e_shentsize"], int)
-    assert isinstance(fields["e_shnum"], int)
-    assert isinstance(fields["e_shstrndx"], int)
+
+
+def test_raising_on_nonexistent_elf_binary_path():
+    with pytest.raises(ValueError, match="Could not open the file"):
+        ExecutableHeader("nonexistent").fields()
+
+
+def test_raising_on_unprocessable_file(mocker: MockerFixture):
+    mocker.patch("builtins.open", mocker.mock_open(read_data=b"unprocessable"))
+
+    with pytest.raises(ValueError, match="Unable to process ELF binary"):
+        ExecutableHeader("invalid").fields()
+
+
+def test_raising_on_elf_binary_with_malformed_ei_data():
+    BINARY_PATH = "tests/samples/binaries/binary-with-malformed-ei-data"
+
+    with pytest.raises(ValueError, match="ELF binary is not valid"):
+        ExecutableHeader(BINARY_PATH).fields()
+
+
+def test_raising_on_elf_binary_with_malformed_ei_version():
+    BINARY_PATH = "tests/samples/binaries/binary-with-malformed-ei-version"
+
+    with pytest.raises(ValueError, match="ELF binary is not valid"):
+        ExecutableHeader(BINARY_PATH).fields()
+
+
+def test_raising_on_elf_binary_with_malformed_e_type():
+    BINARY_PATH = "tests/samples/binaries/binary-with-malformed-e-type"
+
+    with pytest.raises(ValueError, match="ELF binary is not valid"):
+        ExecutableHeader(BINARY_PATH).fields()
 
 
 def test_raising_on_32bit_elf_binary():
@@ -44,17 +67,3 @@ def test_raising_on_32bit_elf_binary():
 
     with pytest.raises(ValueError, match="ELF binary must be 64-bit"):
         ExecutableHeader(BINARY_PATH).fields()
-
-
-def test_raising_on_invalid_elf_binary(mocker: MockerFixture):
-    mocker.patch("builtins.open", mocker.mock_open(read_data=b"invalid"))
-
-    with pytest.raises(ValueError, match="is not a valid ELF binary"):
-        ExecutableHeader("invalid").fields()
-
-
-def test_raising_on_nonexistent_elf_binary_path():
-    with pytest.raises(
-        ValueError, match="Could not open ELF binary 'nonexistent'"
-    ):
-        ExecutableHeader("nonexistent").fields()

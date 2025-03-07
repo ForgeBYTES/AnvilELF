@@ -27,7 +27,7 @@ fix:
 		black --line-length 79 /src"
 
 test:
-	$(DOCKER_EXEC) python -m pytest -v /src/tests
+	$(DOCKER_EXEC) python -m pytest -vv /src/tests
 
 clean:
 	@if [ -n "$$(docker ps -q -f name=$(CONTAINER_NAME))" ]; then docker stop $(CONTAINER_NAME); fi

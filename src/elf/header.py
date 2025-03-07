@@ -83,13 +83,13 @@ class ExecutableHeader(Header):
             raise ValueError("Could not open the file")
 
     def __valid_fields(self, fields: dict) -> dict:
-        if not self.__fields_valid(fields):
+        if not self.__are_fields_valid(fields):
             raise ValueError("ELF binary is not valid")
         if not self.__is_64_bit(fields):
             raise ValueError("ELF binary must be 64-bit")
         return fields
 
-    def __fields_valid(self, fields: dict) -> bool:
+    def __are_fields_valid(self, fields: dict) -> bool:
         return (
             fields["e_ident"]["EI_MAG"] == self.__MAGIC_VALUE
             and fields["e_ident"]["EI_DATA"] in self.__ENDIANNESS

@@ -1,8 +1,17 @@
 FROM python:3.11
 
-WORKDIR /src
-COPY . /src
+ARG UID=1000
+ARG GID=1000
 
-RUN apt update &&  \
+RUN groupadd -g ${GID} anvilelf
+RUN useradd -m -u ${UID} -g ${GID} -s /bin/bash anvilelf
+
+WORKDIR /src
+
+COPY --chown=anvilelf:anvilelf . /src
+
+RUN apt update && \
     apt install -y gcc && \
     pip install -r /src/requirements-dev.txt
+
+USER anvilelf

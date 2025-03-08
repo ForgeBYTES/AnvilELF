@@ -2,15 +2,21 @@ import struct
 from abc import ABC, abstractmethod
 
 
-class Header(ABC):
+class ExecutableHeader(ABC):
     @abstractmethod
     def fields(self) -> dict:
         pass
 
+    @abstractmethod
+    def change(self, fields: dict) -> None:
+        pass
 
-class ExecutableHeader(Header):
+
+class RawExecutableHeader(ExecutableHeader):
     __HEADER_SIZE = 64
-    __STRUCT_FORMAT = "<16sHHIQQQIHHHHHH"
+
+    __READ_STRUCT_FORMAT = "<16sHHIQQQIHHHHHH"
+    __WRITE_STRUCT_FORMAT = "<4sBBBBB7sHHIQQQIHHHHHH"
 
     __MAGIC_VALUE = b"\x7fELF"
 
@@ -38,7 +44,15 @@ class ExecutableHeader(Header):
         self.__filename = filename
 
     def fields(self) -> dict:
-        _struct = self.__struct(self.__data(self.__filename))
+        try:
+            _struct = struct.unpack(
+                self.__READ_STRUCT_FORMAT,
+                self.__data(self.__filename)[
+                    : struct.calcsize(self.__READ_STRUCT_FORMAT)
+                ],
+            )
+        except struct.error:
+            raise ValueError("Unable to process ELF file")
         return self.__valid_fields(
             {
                 "e_ident": {
@@ -66,27 +80,28 @@ class ExecutableHeader(Header):
             }
         )
 
-    def __struct(self, data: bytes) -> tuple:
+    def change(self, fields: dict) -> None:
         try:
-            return struct.unpack(
-                self.__STRUCT_FORMAT,
-                data[: struct.calcsize(self.__STRUCT_FORMAT)],
+            _struct = struct.pack(
+                self.__WRITE_STRUCT_FORMAT,
+                *self.__changed_fields(fields, self.fields()),
             )
+            self.__write_data(self.__filename, _struct)
         except struct.error:
-            raise ValueError("Unable to process ELF binary")
+            raise ValueError("Unable to process ELF file")
 
     def __data(self, filename: str) -> bytes:
         try:
             with open(filename, "rb") as file:
                 return file.read(self.__HEADER_SIZE)
         except OSError:
-            raise ValueError("Could not open the file")
+            raise ValueError("Failed to read ELF file")
 
     def __valid_fields(self, fields: dict) -> dict:
         if not self.__are_fields_valid(fields):
-            raise ValueError("ELF binary is not valid")
+            raise ValueError("ELF file is not valid")
         if not self.__is_64_bit(fields):
-            raise ValueError("ELF binary must be 64-bit")
+            raise ValueError("ELF file must be 64-bit")
         return fields
 
     def __are_fields_valid(self, fields: dict) -> bool:
@@ -102,3 +117,41 @@ class ExecutableHeader(Header):
             fields["e_ident"]["EI_CLASS"] == self.__ELFCLASS64
             and fields["e_machine"] == self.__EM_X86_64
         )
+
+    def __changed_fields(self, new: dict, original: dict) -> tuple:
+        return tuple(
+            new.get("e_ident", {}).get(field, original["e_ident"][field])
+            for field in [
+                "EI_MAG",
+                "EI_CLASS",
+                "EI_DATA",
+                "EI_VERSION",
+                "EI_OSABI",
+                "EI_ABIVERSION",
+                "EI_PAD",
+            ]
+        ) + tuple(
+            new.get(field, original[field])
+            for field in [
+                "e_type",
+                "e_machine",
+                "e_version",
+                "e_entry",
+                "e_phoff",
+                "e_shoff",
+                "e_flags",
+                "e_ehsize",
+                "e_phentsize",
+                "e_phnum",
+                "e_shentsize",
+                "e_shnum",
+                "e_shstrndx",
+            ]
+        )
+
+    def __write_data(self, filename: str, data: bytes):
+        try:
+            with open(filename, "r+b") as file:
+                file.write(data)
+        except OSError:
+            raise ValueError("Failed to write to ELF file")

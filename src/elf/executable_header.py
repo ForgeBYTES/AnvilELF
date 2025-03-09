@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 
 class ExecutableHeader(ABC):
+    _HEADER_SIZE = 64
+
     _E_INDENT_FIELDS = [
         "EI_MAG",
         "EI_CLASS",
@@ -39,8 +41,6 @@ class ExecutableHeader(ABC):
 
 
 class RawExecutableHeader(ExecutableHeader):
-    __HEADER_SIZE = 64
-
     __READ_STRUCT_FORMAT = "<16sHHIQQQIHHHHHH"
     __WRITE_STRUCT_FORMAT = "<4sBBBBB7sHHIQQQIHHHHHH"
 
@@ -56,7 +56,7 @@ class RawExecutableHeader(ExecutableHeader):
                 ],
             )
         except struct.error:
-            raise ValueError("Unable to process ELF binary")
+            raise ValueError("Unable to process binary")
         return {
             "e_ident": {
                 "EI_MAG": _struct[0][:4],
@@ -84,37 +84,41 @@ class RawExecutableHeader(ExecutableHeader):
 
     def change(self, fields: dict) -> None:
         try:
+            original_fields = self.fields()
             _struct = struct.pack(
                 self.__WRITE_STRUCT_FORMAT,
-                *self.__changed_fields(fields, self.fields()),
+                *(
+                    tuple(
+                        fields.get("e_ident", {}).get(
+                            field,
+                            original_fields["e_ident"][field],
+                        )
+                        for field in self._E_INDENT_FIELDS
+                    )
+                    + tuple(
+                        fields.get(field, original_fields[field])
+                        for field in self._FIELDS
+                        if field != "e_ident"
+                    )
+                ),
             )
             self.__write_data(self.__filename, _struct)
         except struct.error:
-            raise ValueError("Unable to process ELF binary")
+            raise ValueError("Unable to process binary")
 
     def __data(self, filename: str) -> bytes:
         try:
             with open(filename, "rb") as file:
-                return file.read(self.__HEADER_SIZE)
+                return file.read(self._HEADER_SIZE)
         except OSError:
-            raise ValueError("Failed to read ELF binary")
-
-    def __changed_fields(self, new: dict, original: dict) -> tuple:
-        return tuple(
-            new.get("e_ident", {}).get(field, original["e_ident"][field])
-            for field in self._E_INDENT_FIELDS
-        ) + tuple(
-            new.get(field, original[field])
-            for field in self._FIELDS
-            if field != "e_ident"
-        )
+            raise ValueError("Failed to read file")
 
     def __write_data(self, filename: str, data: bytes):
         try:
             with open(filename, "r+b") as file:
                 file.write(data)
         except OSError:
-            raise ValueError("Failed to write to ELF binary")
+            raise ValueError("Failed to write to file")
 
 
 class ValidatedExecutableHeader(ExecutableHeader):
@@ -133,41 +137,89 @@ class ValidatedExecutableHeader(ExecutableHeader):
     __EM_X86_64 = 62
 
     __ENDIANNESS = [__ELFDATA2LSB, __ELFDATA2MSB]
-    __TYPES = [
-        __ET_REL,
-        __ET_EXEC,
-        __ET_DYN,
-        __ET_CORE,
-    ]
+    __TYPES = [__ET_REL, __ET_EXEC, __ET_DYN, __ET_CORE]
 
     def __init__(self, executable_header: ExecutableHeader):
         self.__executable_header = executable_header
 
     def fields(self) -> dict:
-        return self.__valid_fields(self.__executable_header.fields())
+        fields = self.__executable_header.fields()
 
-    def change(self, fields: dict) -> None:
-        return self.__executable_header.change(self.__valid_fields(fields))
+        self.__validate_all(fields)
 
-    def __valid_fields(self, fields: dict) -> dict:
-        if not self.__are_fields_valid(fields):
-            raise ValueError("ELF binary structure is not valid")
-        if not self.__is_64_bit(fields):
-            raise ValueError("ELF binary must be 64-bit")
         return fields
 
-    def __are_fields_valid(self, fields: dict) -> bool:
+    def change(self, fields: dict) -> None:
+        self.__validate(fields)
+
+        return self.__executable_header.change(fields)
+
+    def __validate_all(self, fields: dict) -> None:
+        if not self.__is_valid_structure(fields):
+            raise ValueError("Binary structure is not valid")
+        if not self.__is_64_bit(fields):
+            raise ValueError("Binary must be 64-bit")
+
+        self.__validate(fields)
+
+    def __is_valid_structure(self, fields: dict) -> bool:
         return (
             list(fields.keys()) == self._FIELDS
             and list(fields["e_ident"].keys()) == self._E_INDENT_FIELDS
-            and fields["e_ident"]["EI_MAG"] == self.__MAGIC_VALUE
-            and fields["e_ident"]["EI_DATA"] in self.__ENDIANNESS
-            and fields["e_ident"]["EI_VERSION"] == 1
-            and fields["e_type"] in self.__TYPES
         )
 
     def __is_64_bit(self, fields: dict) -> bool:
         return (
             fields["e_ident"]["EI_CLASS"] == self.__ELFCLASS64
             and fields["e_machine"] == self.__EM_X86_64
+            and fields["e_ehsize"] == self._HEADER_SIZE
         )
+
+    def __validate(self, fields: dict) -> None:
+        for field, value in fields.items():
+            match field:
+                case "e_ident":
+                    self.__validate_e_ident(value)
+                    continue
+                case "e_type":
+                    if value in self.__TYPES:
+                        continue
+                case "e_entry":
+                    if value > 0:
+                        continue
+                case "e_phoff" | "e_shoff":
+                    if self.is_aligned(value):
+                        continue
+                case "e_ehsize" | "e_shentsize":
+                    if value == 64:
+                        continue
+                case _:
+                    self.__validate_field_exists(field, self._FIELDS)
+                    continue
+
+            raise ValueError(f"Invalid value for {field}")
+
+    def __validate_e_ident(self, fields: dict):
+        for field, value in fields.items():
+            match field:
+                case "EI_MAG":
+                    if value == self.__MAGIC_VALUE:
+                        continue
+                case "EI_DATA":
+                    if value in self.__ENDIANNESS:
+                        continue
+                case "EI_VERSION":
+                    if value == 1:
+                        continue
+                case _:
+                    self.__validate_field_exists(field, self._E_INDENT_FIELDS)
+                    continue
+
+            raise ValueError(f"Invalid value for {field}")
+
+    def is_aligned(self, offset: int) -> bool:
+        return offset >= 0 and offset % 8 == 0
+
+    def __validate_field_exists(self, field: str, fields: list):
+        if field not in fields:
+            raise ValueError(f"Unknown field {field}")

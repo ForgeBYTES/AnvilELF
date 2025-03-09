@@ -1,25 +1,25 @@
-import shutil
-from pathlib import Path
-
 import pytest
 from pytest_mock import MockerFixture
 
-from src.elf.header import RawExecutableHeader, ValidatedExecutableHeader
+from src.elf.executable_header import (
+    RawExecutableHeader,
+    ValidatedExecutableHeader,
+)
+from tests.fixtures.fixtures import TemporaryFiles
 
 
 @pytest.fixture
 def prepare_temporary_binaries():
-    temporary_directory = Path("tests/samples/temporary_binaries")
+    files = TemporaryFiles(
+        original_path="tests/samples/binaries",
+        temporary_path="tests/samples/temporary_binaries",
+    )
 
-    for file in Path("tests/samples/binaries").iterdir():
-        if file.is_file():
-            shutil.copy(file, temporary_directory)
+    files.copy()
 
     yield
 
-    for file in temporary_directory.iterdir():
-        if file.name != ".gitkeep":
-            file.unlink()
+    files.unlink()
 
 
 def test_returning_valid_executable_header():
@@ -162,7 +162,7 @@ def test_raising_on_changing_invalid_e_ident_field_in_executable_header(
         ("e_type", 5),
     ],
 )
-def test_raising_on_changing_disallowed_fields(
+def test_raising_on_changing_disallowed_field_values(
     prepare_temporary_binaries, field, invalid_value
 ):
     binary_path = "tests/samples/temporary_binaries/binary"

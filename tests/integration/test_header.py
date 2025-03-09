@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pytest_mock import MockerFixture
 
-from src.elf.header import RawExecutableHeader
+from src.elf.header import RawExecutableHeader, ValidatedExecutableHeader
 
 
 @pytest.fixture
@@ -23,8 +23,8 @@ def prepare_temporary_binaries():
 
 
 def test_returning_valid_executable_header():
-    BINARY_PATH = "tests/samples/binaries/binary"
-    EXPECTED_OUTPUT = {
+    binary_path = "tests/samples/binaries/binary"
+    expected_output = {
         "e_ident": {
             "EI_MAG": b"\x7fELF",
             "EI_CLASS": 2,
@@ -39,93 +39,135 @@ def test_returning_valid_executable_header():
         "e_version": 1,
     }
 
-    fields = RawExecutableHeader(BINARY_PATH).fields()
+    fields = RawExecutableHeader(binary_path).fields()
 
-    assert fields["e_ident"] == EXPECTED_OUTPUT["e_ident"]
-    assert fields["e_type"] == EXPECTED_OUTPUT["e_type"]
-    assert fields["e_machine"] == EXPECTED_OUTPUT["e_machine"]
-    assert fields["e_version"] == EXPECTED_OUTPUT["e_version"]
+    assert fields["e_ident"] == expected_output["e_ident"]
+    assert fields["e_type"] == expected_output["e_type"]
+    assert fields["e_machine"] == expected_output["e_machine"]
+    assert fields["e_version"] == expected_output["e_version"]
 
 
 def test_changing_single_field_in_executable_header(
     prepare_temporary_binaries,
 ):
-    BINARY_PATH = "tests/samples/temporary_binaries/binary"
+    binary_path = "tests/samples/temporary_binaries/binary"
 
-    ORIGINAL_EI_DATA = 1
-    EXPECTED_EI_DATA = 2
+    original_ei_data = 1
+    expected_ei_data = 2
 
-    executable_header = RawExecutableHeader(BINARY_PATH)
+    executable_header = RawExecutableHeader(binary_path)
 
-    assert executable_header.fields()["e_ident"]["EI_DATA"] == ORIGINAL_EI_DATA
+    assert executable_header.fields()["e_ident"]["EI_DATA"] == original_ei_data
 
-    executable_header.change({"e_ident": {"EI_DATA": EXPECTED_EI_DATA}})
+    executable_header.change({"e_ident": {"EI_DATA": expected_ei_data}})
 
-    assert executable_header.fields()["e_ident"]["EI_DATA"] == EXPECTED_EI_DATA
+    assert executable_header.fields()["e_ident"]["EI_DATA"] == expected_ei_data
 
 
 def test_changing_multiple_fields_in_executable_header(
     prepare_temporary_binaries,
 ):
-    BINARY_PATH = "tests/samples/temporary_binaries/binary"
+    binary_path = "tests/samples/temporary_binaries/binary"
 
-    ORIGINAL_EI_DATA = 1
-    ORIGINAL_E_TYPE = 3
+    original_ei_data = 1
+    original_e_type = 3
 
-    EXPECTED_EI_DATA = 2
-    EXPECTED_E_TYPE = 1
+    expected_ei_data = 2
+    expected_e_type = 1
 
-    executable_header = RawExecutableHeader(BINARY_PATH)
+    executable_header = RawExecutableHeader(binary_path)
 
-    assert executable_header.fields()["e_ident"]["EI_DATA"] == ORIGINAL_EI_DATA
-    assert executable_header.fields()["e_type"] == ORIGINAL_E_TYPE
+    assert executable_header.fields()["e_ident"]["EI_DATA"] == original_ei_data
+    assert executable_header.fields()["e_type"] == original_e_type
 
     executable_header.change(
         {
-            "e_ident": {"EI_DATA": EXPECTED_EI_DATA},
-            "e_type": EXPECTED_E_TYPE,
+            "e_ident": {"EI_DATA": expected_ei_data},
+            "e_type": expected_e_type,
         }
     )
 
-    assert executable_header.fields()["e_ident"]["EI_DATA"] == EXPECTED_EI_DATA
-    assert executable_header.fields()["e_type"] == EXPECTED_E_TYPE
+    assert executable_header.fields()["e_ident"]["EI_DATA"] == expected_ei_data
+    assert executable_header.fields()["e_type"] == expected_e_type
 
 
 def test_raising_on_nonexistent_elf_binary_path():
-    with pytest.raises(ValueError, match="Failed to read ELF file"):
+    with pytest.raises(ValueError, match="Failed to read ELF binary"):
         RawExecutableHeader("nonexistent").fields()
 
 
 def test_raising_on_unprocessable_file(mocker: MockerFixture):
     mocker.patch("builtins.open", mocker.mock_open(read_data=b"unprocessable"))
 
-    with pytest.raises(ValueError, match="Unable to process ELF file"):
+    with pytest.raises(ValueError, match="Unable to process ELF binary"):
         RawExecutableHeader("invalid").fields()
 
 
 def test_raising_on_elf_binary_with_malformed_ei_data():
-    BINARY_PATH = "tests/samples/binaries/binary-with-malformed-ei-data"
+    binary_path = "tests/samples/binaries/binary-with-malformed-ei-data"
 
-    with pytest.raises(ValueError, match="ELF file is not valid"):
-        RawExecutableHeader(BINARY_PATH).fields()
+    with pytest.raises(ValueError, match="ELF binary structure is not valid"):
+        ValidatedExecutableHeader(RawExecutableHeader(binary_path)).fields()
 
 
 def test_raising_on_elf_binary_with_malformed_ei_version():
-    BINARY_PATH = "tests/samples/binaries/binary-with-malformed-ei-version"
+    binary_path = "tests/samples/binaries/binary-with-malformed-ei-version"
 
-    with pytest.raises(ValueError, match="ELF file is not valid"):
-        RawExecutableHeader(BINARY_PATH).fields()
+    with pytest.raises(ValueError, match="ELF binary structure is not valid"):
+        ValidatedExecutableHeader(RawExecutableHeader(binary_path)).fields()
 
 
 def test_raising_on_elf_binary_with_malformed_e_type():
-    BINARY_PATH = "tests/samples/binaries/binary-with-malformed-e-type"
+    binary_path = "tests/samples/binaries/binary-with-malformed-e-type"
 
-    with pytest.raises(ValueError, match="ELF file is not valid"):
-        RawExecutableHeader(BINARY_PATH).fields()
+    with pytest.raises(ValueError, match="ELF binary structure is not valid"):
+        ValidatedExecutableHeader(RawExecutableHeader(binary_path)).fields()
 
 
 def test_raising_on_32bit_elf_binary():
-    BINARY_PATH = "tests/samples/binaries/binary-32bit"
+    binary_path = "tests/samples/binaries/binary-32bit"
 
-    with pytest.raises(ValueError, match="ELF file must be 64-bit"):
-        RawExecutableHeader(BINARY_PATH).fields()
+    with pytest.raises(ValueError, match="ELF binary must be 64-bit"):
+        ValidatedExecutableHeader(RawExecutableHeader(binary_path)).fields()
+
+
+def test_raising_on_changing_invalid_field_in_executable_header(
+    prepare_temporary_binaries,
+):
+    binary_path = "tests/samples/temporary_binaries/binary"
+
+    with pytest.raises(ValueError, match="ELF binary structure is not valid"):
+        ValidatedExecutableHeader(RawExecutableHeader(binary_path)).change(
+            {"invalid": 1}
+        )
+
+
+def test_raising_on_changing_invalid_e_ident_field_in_executable_header(
+    prepare_temporary_binaries,
+):
+    binary_path = "tests/samples/temporary_binaries/binary"
+
+    with pytest.raises(ValueError, match="ELF binary structure is not valid"):
+        ValidatedExecutableHeader(RawExecutableHeader(binary_path)).change(
+            {"e_ident": {"invalid": 1}}
+        )
+
+
+@pytest.mark.parametrize(
+    "field, invalid_value",
+    [
+        ("e_ident", {"EI_MAG": b"invalid"}),
+        ("e_ident", {"EI_DATA": 3}),
+        ("e_ident", {"EI_VERSION": 2}),
+        ("e_type", 5),
+    ],
+)
+def test_raising_on_changing_disallowed_fields(
+    prepare_temporary_binaries, field, invalid_value
+):
+    binary_path = "tests/samples/temporary_binaries/binary"
+
+    with pytest.raises(ValueError, match="ELF binary structure is not valid"):
+        ValidatedExecutableHeader(RawExecutableHeader(binary_path)).change(
+            {field: invalid_value}
+        )

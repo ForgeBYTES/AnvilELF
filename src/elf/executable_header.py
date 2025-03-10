@@ -188,7 +188,7 @@ class ValidatedExecutableHeader(ExecutableHeader):
                     if value > 0:
                         continue
                 case "e_phoff" | "e_shoff":
-                    if self.is_aligned(value):
+                    if self.__is_aligned(value):
                         continue
                 case "e_ehsize" | "e_shentsize":
                     if value == 64:
@@ -217,7 +217,7 @@ class ValidatedExecutableHeader(ExecutableHeader):
 
             raise ValueError(f"Invalid value for {field}")
 
-    def is_aligned(self, offset: int) -> bool:
+    def __is_aligned(self, offset: int) -> bool:
         return offset >= 0 and offset % 8 == 0
 
     def __validate_field_exists(self, field: str, fields: list):

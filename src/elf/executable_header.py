@@ -191,8 +191,14 @@ class ValidatedExecutableHeader(ExecutableHeader):
                     if self.__is_aligned(value):
                         continue
                 case "e_ehsize" | "e_shentsize":
-                    if value == 64:
+                    if value in [0, 64]:
                         continue
+                case "e_phentsize":
+                    if value in [0, 56]:
+                        continue
+                case "e_flags":
+                    self.__validate_e_flags(value, fields)
+                    continue
                 case _:
                     self.__validate_field_exists(field, self._FIELDS)
                     continue
@@ -219,6 +225,15 @@ class ValidatedExecutableHeader(ExecutableHeader):
 
     def __is_aligned(self, offset: int) -> bool:
         return offset >= 0 and offset % 8 == 0
+
+    def __validate_e_flags(self, e_flags: int, fields: dict) -> None:
+        e_machine = (
+            fields["e_machine"]
+            if "e_machine" in fields
+            else self.__executable_header.fields()["e_machine"]
+        )
+        if e_machine == self.__EM_X86_64 and e_flags != 0:
+            raise ValueError("Nonzero e_flags unexpected for x86-64")
 
     def __validate_field_exists(self, field: str, fields: list):
         if field not in fields:

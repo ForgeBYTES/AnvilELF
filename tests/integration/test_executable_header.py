@@ -44,19 +44,16 @@ def test_returning_fields(_class):
         "e_machine": 62,
         "e_version": 1,
         "e_ehsize": 64,
+        "e_phentsize": 56,
         "e_shentsize": 64,
+        "e_flags": 0,
     }
     binary_path = "tests/samples/binaries/binary"
 
     fields = _class(binary_path).fields()
 
-    assert fields["e_ident"] == expected_output["e_ident"]
-    assert fields["e_type"] == expected_output["e_type"]
-    assert fields["e_machine"] == expected_output["e_machine"]
-    assert fields["e_version"] == expected_output["e_version"]
-    assert fields["e_entry"] > 0
-    assert fields["e_ehsize"] == expected_output["e_ehsize"]
-    assert fields["e_shentsize"] == expected_output["e_shentsize"]
+    for field in expected_output:
+        assert fields[field] == expected_output[field]
 
 
 @pytest.mark.parametrize(
@@ -192,7 +189,9 @@ def test_raising_on_changing_invalid_e_ident_field(
         ("e_shoff", 7, "Invalid value for e_shoff"),
         ("e_entry", 0, "Invalid value for e_entry"),
         ("e_ehsize", 32, "Invalid value for e_ehsize"),
+        ("e_phentsize", 128, "Invalid value for e_phentsize"),
         ("e_shentsize", 128, "Invalid value for e_shentsize"),
+        ("e_flags", 0xDEADBEEF, "Nonzero e_flags unexpected for x86-64"),
     ],
 )
 def test_raising_on_changing_invalid_field_values(

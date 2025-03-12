@@ -190,7 +190,10 @@ class ValidatedExecutableHeader(ExecutableHeader):
                 case "e_phoff" | "e_shoff":
                     if self.__is_aligned(value):
                         continue
-                case "e_ehsize" | "e_shentsize":
+                case "e_ehsize":
+                    if value == 64:
+                        continue
+                case "e_shentsize":
                     if value in [0, 64]:
                         continue
                 case "e_phentsize":

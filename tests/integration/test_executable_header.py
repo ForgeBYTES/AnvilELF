@@ -30,7 +30,7 @@ def prepare_temporary_binaries():
     ],
 )
 def test_returning_fields(_class):
-    expected_output = {
+    expected_fields = {
         "e_ident": {
             "EI_MAG": b"\x7fELF",
             "EI_CLASS": 2,
@@ -52,8 +52,8 @@ def test_returning_fields(_class):
 
     fields = _class(binary_path).fields()
 
-    for field in expected_output:
-        assert fields[field] == expected_output[field]
+    for field in expected_fields:
+        assert fields[field] == expected_fields[field]
 
 
 @pytest.mark.parametrize(
@@ -113,7 +113,7 @@ def test_changing_multiple_fields(
     assert executable_header.fields()["e_type"] == expected_e_type
 
 
-def test_raising_on_nonexistent_path():
+def test_raising_on_nonexistent_filename_path():
     with pytest.raises(ValueError, match="Failed to read file"):
         RawExecutableHeader("nonexistent").fields()
 

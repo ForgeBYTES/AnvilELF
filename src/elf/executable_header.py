@@ -1,3 +1,4 @@
+import os
 import struct
 from abc import ABC, abstractmethod
 
@@ -37,6 +38,10 @@ class ExecutableHeader(ABC):
 
     @abstractmethod
     def change(self, fields: dict) -> None:
+        pass
+
+    @abstractmethod
+    def filename(self) -> str:
         pass
 
 
@@ -106,6 +111,11 @@ class RawExecutableHeader(ExecutableHeader):
         except struct.error:
             raise ValueError("Unable to process binary")
 
+    def filename(self) -> str:
+        if not os.path.isfile(self.__filename):
+            raise ValueError("Filename does not exist")
+        return self.__filename
+
     def __data(self, filename: str) -> bytes:
         try:
             with open(filename, "rb") as file:
@@ -153,6 +163,9 @@ class ValidatedExecutableHeader(ExecutableHeader):
         self.__validate(fields)
 
         return self.__executable_header.change(fields)
+
+    def filename(self) -> str:
+        return self.__executable_header.filename()
 
     def __validate_all(self, fields: dict) -> None:
         if not self.__is_valid_structure(fields):

@@ -56,6 +56,11 @@ def test_returning_fields(_class):
         assert fields[field] == expected_fields[field]
 
 
+def test_returning_filename():
+    expected_path = "tests/samples/binaries/binary"
+    assert RawExecutableHeader(expected_path).filename() == expected_path
+
+
 @pytest.mark.parametrize(
     "_class",
     [
@@ -113,9 +118,14 @@ def test_changing_multiple_fields(
     assert executable_header.fields()["e_type"] == expected_e_type
 
 
-def test_raising_on_nonexistent_filename_path():
+def test_raising_on_returning_fields_using_nonexistent_filename():
     with pytest.raises(ValueError, match="Failed to read file"):
         RawExecutableHeader("nonexistent").fields()
+
+
+def test_raising_on_returning_nonexistent_filename():
+    with pytest.raises(ValueError, match="Filename does not exist"):
+        RawExecutableHeader("nonexistent").filename()
 
 
 def test_raising_on_unprocessable_binary(mocker: MockerFixture):

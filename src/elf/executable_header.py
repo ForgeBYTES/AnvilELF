@@ -123,7 +123,7 @@ class RawExecutableHeader(ExecutableHeader):
         except OSError:
             raise ValueError("Failed to read file")
 
-    def __write_data(self, filename: str, data: bytes):
+    def __write_data(self, filename: str, data: bytes) -> None:
         try:
             with open(filename, "r+b") as file:
                 file.write(data)

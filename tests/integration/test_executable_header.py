@@ -43,17 +43,20 @@ def test_returning_fields(_class):
         "e_type": 3,
         "e_machine": 62,
         "e_version": 1,
+        "e_entry": 4192,
+        "e_phoff": 64,
+        "e_shoff": 13984,
+        "e_flags": 0,
         "e_ehsize": 64,
         "e_phentsize": 56,
+        "e_phnum": 13,
         "e_shentsize": 64,
-        "e_flags": 0,
+        "e_shnum": 31,
+        "e_shstrndx": 30,
     }
     binary_path = "tests/samples/binaries/binary"
 
-    fields = _class(binary_path).fields()
-
-    for field in expected_fields:
-        assert fields[field] == expected_fields[field]
+    assert _class(binary_path).fields() == expected_fields
 
 
 def test_returning_filename():
@@ -73,6 +76,30 @@ def test_changing_single_field(prepare_temporary_binaries, _class):
 
     original_ei_data = 1
     expected_ei_data = 2
+    expected_fields = {
+        "e_ident": {
+            "EI_MAG": b"\x7fELF",
+            "EI_CLASS": 2,
+            "EI_DATA": expected_ei_data,
+            "EI_VERSION": 1,
+            "EI_OSABI": 0,
+            "EI_ABIVERSION": 0,
+            "EI_PAD": b"\x00" * 7,
+        },
+        "e_type": 3,
+        "e_machine": 62,
+        "e_version": 1,
+        "e_entry": 4192,
+        "e_phoff": 64,
+        "e_shoff": 13984,
+        "e_flags": 0,
+        "e_ehsize": 64,
+        "e_phentsize": 56,
+        "e_phnum": 13,
+        "e_shentsize": 64,
+        "e_shnum": 31,
+        "e_shstrndx": 30,
+    }
 
     executable_header = _class(binary_path)
 
@@ -80,7 +107,7 @@ def test_changing_single_field(prepare_temporary_binaries, _class):
 
     executable_header.change({"e_ident": {"EI_DATA": expected_ei_data}})
 
-    assert executable_header.fields()["e_ident"]["EI_DATA"] == expected_ei_data
+    assert executable_header.fields() == expected_fields
 
 
 @pytest.mark.parametrize(
@@ -95,12 +122,34 @@ def test_changing_multiple_fields(
     _class,
 ):
     binary_path = "tests/samples/temporary_binaries/binary"
-
     original_ei_data = 1
     original_e_type = 3
-
     expected_ei_data = 2
     expected_e_type = 1
+    expected_fields = {
+        "e_ident": {
+            "EI_MAG": b"\x7fELF",
+            "EI_CLASS": 2,
+            "EI_DATA": expected_ei_data,
+            "EI_VERSION": 1,
+            "EI_OSABI": 0,
+            "EI_ABIVERSION": 0,
+            "EI_PAD": b"\x00" * 7,
+        },
+        "e_type": expected_e_type,
+        "e_machine": 62,
+        "e_version": 1,
+        "e_entry": 4192,
+        "e_phoff": 64,
+        "e_shoff": 13984,
+        "e_flags": 0,
+        "e_ehsize": 64,
+        "e_phentsize": 56,
+        "e_phnum": 13,
+        "e_shentsize": 64,
+        "e_shnum": 31,
+        "e_shstrndx": 30,
+    }
 
     executable_header = _class(binary_path)
 
@@ -114,8 +163,7 @@ def test_changing_multiple_fields(
         }
     )
 
-    assert executable_header.fields()["e_ident"]["EI_DATA"] == expected_ei_data
-    assert executable_header.fields()["e_type"] == expected_e_type
+    assert executable_header.fields() == expected_fields
 
 
 def test_raising_on_returning_fields_using_nonexistent_filename():

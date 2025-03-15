@@ -56,6 +56,28 @@ class RawSectionHeader(SectionHeader):
         except struct.error:
             raise ValueError("Unable to process binary")
 
+    def change(self, fields: dict) -> None:
+        if self.__filename is None or self.__offset is None:
+            raise ValueError("Filename and offset must be provided")
+
+        try:
+            original_fields = self.fields()
+            self.__write_data(
+                self.__filename,
+                self.__offset,
+                struct.pack(
+                    self.__STRUCT_FORMAT,
+                    *(
+                        tuple(
+                            fields.get(field, original_fields[field])
+                            for field in self._FIELDS
+                        )
+                    ),
+                ),
+            )
+        except struct.error:
+            raise ValueError("Unable to process binary")
+
     def __data(self) -> bytes:
         if self.__raw_data is not None:
             return self.__raw_data
@@ -69,6 +91,14 @@ class RawSectionHeader(SectionHeader):
                 return file.read(self._HEADER_SIZE)
         except OSError:
             raise ValueError("Failed to read file")
+
+    def __write_data(self, filename: str, offset: int, data: bytes) -> None:
+        try:
+            with open(filename, "r+b") as file:
+                file.seek(offset)
+                file.write(data)
+        except OSError:
+            raise ValueError("Failed to write to file")
 
 
 class RawSectionHeaders(SectionHeaders):

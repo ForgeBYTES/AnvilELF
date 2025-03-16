@@ -8,11 +8,8 @@ AnvilELF is a purist object-oriented tool for parsing, validating, and modifying
 
 ## Installation 🐍
 ```sh
-# Clone the repository
 git clone https://github.com/dasuos/AnvilELF.git
 cd anvilelf
-
-# Build the Docker container
 make install
 ```
 

@@ -26,7 +26,9 @@ def prepare_temporary_binaries():
     "_class",
     [
         RawExecutableHeader,
-        lambda path: ValidatedExecutableHeader(RawExecutableHeader(path)),
+        lambda filename: ValidatedExecutableHeader(
+            RawExecutableHeader(filename),
+        ),
     ],
 )
 def test_returning_fields(_class):

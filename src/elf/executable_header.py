@@ -32,6 +32,23 @@ class ExecutableHeader(ABC):
         "e_shstrndx",
     ]
 
+    _MAGIC_VALUE = b"\x7fELF"
+
+    _ELFDATA2LSB = 1
+    _ELFDATA2MSB = 2
+
+    _ET_REL = 1
+    _ET_EXEC = 2
+    _ET_DYN = 3
+    _ET_CORE = 4
+
+    _ELFCLASS64 = 2
+
+    _EM_X86_64 = 62
+
+    _ENDIANNESS = [_ELFDATA2LSB, _ELFDATA2MSB]
+    _TYPES = [_ET_REL, _ET_EXEC, _ET_DYN, _ET_CORE]
+
     @abstractmethod
     def fields(self) -> dict:
         pass
@@ -132,28 +149,11 @@ class RawExecutableHeader(ExecutableHeader):
 
 
 class ValidatedExecutableHeader(ExecutableHeader):
-    __MAGIC_VALUE = b"\x7fELF"
-
-    __ELFDATA2LSB = 1
-    __ELFDATA2MSB = 2
-
-    __ET_REL = 1
-    __ET_EXEC = 2
-    __ET_DYN = 3
-    __ET_CORE = 4
-
-    __ELFCLASS64 = 2
-
-    __EM_X86_64 = 62
-
-    __ENDIANNESS = [__ELFDATA2LSB, __ELFDATA2MSB]
-    __TYPES = [__ET_REL, __ET_EXEC, __ET_DYN, __ET_CORE]
-
-    def __init__(self, executable_header: ExecutableHeader):
-        self.__executable_header = executable_header
+    def __init__(self, origin: ExecutableHeader):
+        self.__origin = origin
 
     def fields(self) -> dict:
-        fields = self.__executable_header.fields()
+        fields = self.__origin.fields()
 
         self.__validate_all(fields)
 
@@ -162,10 +162,10 @@ class ValidatedExecutableHeader(ExecutableHeader):
     def change(self, fields: dict) -> None:
         self.__validate(fields)
 
-        return self.__executable_header.change(fields)
+        return self.__origin.change(fields)
 
     def filename(self) -> str:
-        return self.__executable_header.filename()
+        return self.__origin.filename()
 
     def __validate_all(self, fields: dict) -> None:
         if not self.__is_valid_structure(fields):
@@ -183,8 +183,8 @@ class ValidatedExecutableHeader(ExecutableHeader):
 
     def __is_64_bit(self, fields: dict) -> bool:
         return (
-            fields["e_ident"]["EI_CLASS"] == self.__ELFCLASS64
-            and fields["e_machine"] == self.__EM_X86_64
+            fields["e_ident"]["EI_CLASS"] == self._ELFCLASS64
+            and fields["e_machine"] == self._EM_X86_64
             and fields["e_ehsize"] == self._HEADER_SIZE
         )
 
@@ -195,7 +195,7 @@ class ValidatedExecutableHeader(ExecutableHeader):
                     self.__validate_e_ident(value)
                     continue
                 case "e_type":
-                    if value in self.__TYPES:
+                    if value in self._TYPES:
                         continue
                 case "e_entry":
                     if value > 0:
@@ -225,10 +225,10 @@ class ValidatedExecutableHeader(ExecutableHeader):
         for field, value in fields.items():
             match field:
                 case "EI_MAG":
-                    if value == self.__MAGIC_VALUE:
+                    if value == self._MAGIC_VALUE:
                         continue
                 case "EI_DATA":
-                    if value in self.__ENDIANNESS:
+                    if value in self._ENDIANNESS:
                         continue
                 case "EI_VERSION":
                     if value == 1:
@@ -246,9 +246,9 @@ class ValidatedExecutableHeader(ExecutableHeader):
         e_machine = (
             fields["e_machine"]
             if "e_machine" in fields
-            else self.__executable_header.fields()["e_machine"]
+            else self.__origin.fields()["e_machine"]
         )
-        if e_machine == self.__EM_X86_64 and e_flags != 0:
+        if e_machine == self._EM_X86_64 and e_flags != 0:
             raise ValueError("Nonzero e_flags unexpected for x86-64")
 
     def __validate_field_exists(self, field: str, fields: list):

@@ -1,4 +1,4 @@
-# AnvilELF ⚒️🔥🚀
+# AnvilELF ⚒️🔥
 
 **From raw bytes to forged ELF—crafted with purist OOP.**
 

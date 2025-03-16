@@ -19,7 +19,7 @@ check:
 		python -m black --line-length 79 --check /src && \
 		python -m flake8 /src && \
 		python -m mypy --explicit-package-bases /src && \
-		python -m pytest -vv /src/tests"
+		python -m pytest --cov=/src --cov-report=term-missing -vv /src/tests"
 
 fix:
 	@$(DOCKER_EXEC) /bin/bash -c " \
@@ -27,7 +27,7 @@ fix:
 		python -m black --line-length 79 /src"
 
 test:
-	$(DOCKER_EXEC) python -m pytest -vv /src/tests
+	$(DOCKER_EXEC) python -m pytest --cov=/src --cov-report=xml --cov-report=term-missing -vv /src/tests
 
 clean:
 	@if [ -n "$$(docker ps -q -f name=$(CONTAINER_NAME))" ]; then docker stop $(CONTAINER_NAME); fi

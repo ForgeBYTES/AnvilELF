@@ -1,5 +1,8 @@
 # AnvilELF ⚒️🔥
 
+![CI](https://github.com/Dasuos/AnvilELF/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/dasuos/AnvilELF/graph/badge.svg?token=VGJ51NS4HK)](https://codecov.io/gh/dasuos/AnvilELF)
+
 **From raw bytes to forged ELF—crafted with purist OOP.**
 
 AnvilELF is a purist object-oriented tool for parsing, validating, and modifying ELF 64-bit binaries. It is built with **SOLID principles**, **full test coverage**, and a strong focus on **maintainability**.

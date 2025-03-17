@@ -50,15 +50,15 @@ class ExecutableHeader(ABC):
     _TYPES = [_ET_REL, _ET_EXEC, _ET_DYN, _ET_CORE]
 
     @abstractmethod
-    def fields(self) -> dict:
+    def fields(self) -> dict:  # pragma: no cover
         pass
 
     @abstractmethod
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict) -> None:  # pragma: no cover
         pass
 
     @abstractmethod
-    def filename(self) -> str:
+    def filename(self) -> str:  # pragma: no cover
         pass
 
 
@@ -105,28 +105,25 @@ class RawExecutableHeader(ExecutableHeader):
         }
 
     def change(self, fields: dict) -> None:
-        try:
-            original_fields = self.fields()
-            _struct = struct.pack(
-                self.__WRITE_STRUCT_FORMAT,
-                *(
-                    tuple(
-                        fields.get("e_ident", {}).get(
-                            field,
-                            original_fields["e_ident"][field],
-                        )
-                        for field in self._E_INDENT_FIELDS
+        original_fields = self.fields()
+        _struct = struct.pack(
+            self.__WRITE_STRUCT_FORMAT,
+            *(
+                tuple(
+                    fields.get("e_ident", {}).get(
+                        field,
+                        original_fields["e_ident"][field],
                     )
-                    + tuple(
-                        fields.get(field, original_fields[field])
-                        for field in self._FIELDS
-                        if field != "e_ident"
-                    )
-                ),
-            )
-            self.__write_data(self.__filename, _struct)
-        except struct.error:
-            raise ValueError("Unable to process binary")
+                    for field in self._E_INDENT_FIELDS
+                )
+                + tuple(
+                    fields.get(field, original_fields[field])
+                    for field in self._FIELDS
+                    if field != "e_ident"
+                )
+            ),
+        )
+        self.__write_data(self.__filename, _struct)
 
     def filename(self) -> str:
         if not os.path.isfile(self.__filename):
@@ -168,18 +165,10 @@ class ValidatedExecutableHeader(ExecutableHeader):
         return self.__origin.filename()
 
     def __validate_all(self, fields: dict) -> None:
-        if not self.__is_valid_structure(fields):
-            raise ValueError("Binary structure is not valid")
         if not self.__is_64_bit(fields):
             raise ValueError("Binary must be 64-bit")
 
         self.__validate(fields)
-
-    def __is_valid_structure(self, fields: dict) -> bool:
-        return (
-            list(fields.keys()) == self._FIELDS
-            and list(fields["e_ident"].keys()) == self._E_INDENT_FIELDS
-        )
 
     def __is_64_bit(self, fields: dict) -> bool:
         return (

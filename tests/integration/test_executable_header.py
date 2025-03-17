@@ -1,3 +1,6 @@
+import os
+import stat
+
 import pytest
 from pytest_mock import MockerFixture
 
@@ -173,16 +176,44 @@ def test_raising_on_returning_fields_using_nonexistent_filename():
         RawExecutableHeader("nonexistent").fields()
 
 
-def test_raising_on_returning_nonexistent_filename():
+def test_raising_on_changing_field_using_readonly_binary(
+    prepare_temporary_binaries,
+):
+    binary_path = "tests/samples/temporary_binaries/binary"
+    os.chmod(binary_path, stat.S_IREAD)
+
+    with pytest.raises(ValueError, match="Failed to write to file"):
+        RawExecutableHeader(binary_path).change({"e_type": 1})
+
+
+@pytest.mark.parametrize(
+    "_class",
+    [
+        RawExecutableHeader,
+        lambda path: ValidatedExecutableHeader(RawExecutableHeader(path)),
+    ],
+)
+def test_raising_on_returning_nonexistent_filename(_class):
     with pytest.raises(ValueError, match="Filename does not exist"):
-        RawExecutableHeader("nonexistent").filename()
+        _class("nonexistent").filename()
 
 
-def test_raising_on_unprocessable_binary(mocker: MockerFixture):
+def test_raising_on_returning_fields_of_unprocessable_binary(
+    mocker: MockerFixture,
+):
     mocker.patch("builtins.open", mocker.mock_open(read_data=b"unprocessable"))
 
     with pytest.raises(ValueError, match="Unable to process binary"):
         RawExecutableHeader("invalid").fields()
+
+
+def test_raising_on_changing_field_of_unprocessable_binary(
+    mocker: MockerFixture,
+):
+    mocker.patch("builtins.open", mocker.mock_open(read_data=b"unprocessable"))
+
+    with pytest.raises(ValueError, match="Unable to process binary"):
+        RawExecutableHeader("invalid").change({"e_type": 1})
 
 
 def test_raising_on_32bit_type():

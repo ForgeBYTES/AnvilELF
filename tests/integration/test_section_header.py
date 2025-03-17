@@ -1,4 +1,8 @@
+import os
+import stat
+
 import pytest
+from pytest_mock import MockerFixture
 
 from src.elf.executable_header import RawExecutableHeader
 from src.elf.section_header import (
@@ -104,7 +108,16 @@ def test_changing_sh_flags(prepare_temporary_binaries, _class):
     assert section_header.fields() == expected_fields
 
 
-def test_raising_on_missing_filename_or_offset():
+def test_raising_on_returning_fields_of_unprocessable_binary(
+    mocker: MockerFixture,
+):
+    mocker.patch("builtins.open", mocker.mock_open(read_data=b"unprocessable"))
+
+    with pytest.raises(ValueError, match="Unable to process binary"):
+        RawSectionHeader(filename="invalid", offset=5).fields()
+
+
+def test_raising_on_returning_fields_when_missing_filename_or_offset():
     filename = "tests/samples/binaries/binary"
     offset = 13984
 
@@ -112,21 +125,49 @@ def test_raising_on_missing_filename_or_offset():
         ValueError, match="Filename and offset must be provided"
     ):
         RawSectionHeader(filename=filename).fields()
-
     with pytest.raises(
         ValueError, match="Filename and offset must be provided"
     ):
         RawSectionHeader(offset=offset + 64).fields()
-
     with pytest.raises(
         ValueError, match="Filename and offset must be provided"
     ):
         RawSectionHeader().fields()
 
 
-def test_raising_on_nonexistent_filename():
+def test_raising_on_changing_field_when_missing_filename_or_offset():
+    filename = "tests/samples/binaries/binary"
+    offset = 13984
+
+    with pytest.raises(
+        ValueError, match="Filename and offset must be provided"
+    ):
+        RawSectionHeader(filename=filename).change({"sh_flags": 4})
+    with pytest.raises(
+        ValueError, match="Filename and offset must be provided"
+    ):
+        RawSectionHeader(offset=offset + 64).change({"sh_flags": 4})
+    with pytest.raises(
+        ValueError, match="Filename and offset must be provided"
+    ):
+        RawSectionHeader().change({"sh_flags": 4})
+
+
+def test_raising_on_returning_fields_using_nonexistent_filename():
     with pytest.raises(ValueError, match="Failed to read file"):
         RawSectionHeader(filename="nonexistent", offset=13984).fields()
+
+
+def test_raising_on_changing_field_using_readonly_binary(
+    prepare_temporary_binaries,
+):
+    binary_path = "tests/samples/temporary_binaries/binary"
+    os.chmod(binary_path, stat.S_IREAD)
+
+    with pytest.raises(ValueError, match="Failed to write to file"):
+        RawSectionHeader(filename=binary_path, offset=13984).change(
+            {"e_type": 1}
+        )
 
 
 def test_returning_all_section_headers():

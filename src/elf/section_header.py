@@ -78,11 +78,11 @@ class SectionHeader(ABC):
     # fmt: on
 
     @abstractmethod
-    def fields(self) -> dict:
+    def fields(self) -> dict:  # pragma: no cover
         pass
 
     @abstractmethod
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict) -> None:  # pragma: no cover
         pass
 
 
@@ -90,7 +90,7 @@ class SectionHeaders(ABC):
     _HEADER_SIZE = 64
 
     @abstractmethod
-    def all(self) -> list[SectionHeader]:
+    def all(self) -> list[SectionHeader]:  # pragma: no cover
         pass
 
 
@@ -122,23 +122,20 @@ class RawSectionHeader(SectionHeader):
         if self.__filename is None or self.__offset is None:
             raise ValueError("Filename and offset must be provided")
 
-        try:
-            original_fields = self.fields()
-            self.__write_data(
-                self.__filename,
-                self.__offset,
-                struct.pack(
-                    self.__STRUCT_FORMAT,
-                    *(
-                        tuple(
-                            fields.get(field, original_fields[field])
-                            for field in self._FIELDS
-                        )
-                    ),
+        original_fields = self.fields()
+        self.__write_data(
+            self.__filename,
+            self.__offset,
+            struct.pack(
+                self.__STRUCT_FORMAT,
+                *(
+                    tuple(
+                        fields.get(field, original_fields[field])
+                        for field in self._FIELDS
+                    )
                 ),
-            )
-        except struct.error:
-            raise ValueError("Unable to process binary")
+            ),
+        )
 
     def __data(self) -> bytes:
         if self.__raw_data is not None:
@@ -189,12 +186,9 @@ class RawSectionHeaders(SectionHeaders):
     def __data(
         self, filename: str, offset: int, count: int, size: int
     ) -> bytes:
-        try:
-            with open(filename, "rb") as file:
-                file.seek(offset)
-                return file.read(count * size)
-        except OSError:
-            raise ValueError("Failed to read file")
+        with open(filename, "rb") as file:
+            file.seek(offset)
+            return file.read(count * size)
 
 
 class ValidatedSectionHeader(SectionHeader):

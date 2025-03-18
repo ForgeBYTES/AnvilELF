@@ -9,15 +9,15 @@ AnvilELF is a purist object-oriented tool for ELF binary parsing, modification, 
 
 ## 🚀 Roadmap 
 
-| 📄 **Binary Format**             | 🕵️ **Process Tracing & Code Injection** |
-|----------------------------------|------------------------------------------|
-| ✅ Executable Header              | 🔄 Process Tracing (`ptrace` & `/proc`)  |
-| ✅ Section Headers                | 🔄 Infection Detection                   |
-| 🔄 Sections                      | 🔄 Code Injection                        |
-| 🔄 String & Symbol Tables        |                                          |
-| 🔄 Program Headers               |                                          |
-| 🔄 Segments                      |                                          |
-| 🔄 Dynamic Linking & Relocations |                                          |
+|  **Binary Format**               |  **Process Tracing & Code Injection**   |
+|----------------------------------|-----------------------------------------|
+| ✅ Executable Header              | 🔄 Process Tracing (`ptrace` & `/proc`) |
+| ✅ Section Headers                | 🔄 Infection Detection                  |
+| 🔄 Sections                      | 🔄 Code Injection                       |
+| 🔄 String & Symbol Tables        |                                         |
+| 🔄 Program Headers               |                                         |
+| 🔄 Segments                      |                                         |
+| 🔄 Dynamic Linking & Relocations |                                         |
 
 
 ## 🐍 Installation 

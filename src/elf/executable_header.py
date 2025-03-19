@@ -78,7 +78,7 @@ class RawExecutableHeader(ExecutableHeader):
                 ],
             )
         except struct.error:
-            raise ValueError("Unable to process binary")
+            raise ValueError("Unable to process data")
         return {
             "e_ident": {
                 "EI_MAG": _struct[0][:4],
@@ -105,25 +105,24 @@ class RawExecutableHeader(ExecutableHeader):
         }
 
     def change(self, fields: dict) -> None:
-        original_fields = self.fields()
-        _struct = struct.pack(
-            self.__WRITE_STRUCT_FORMAT,
-            *(
-                tuple(
-                    fields.get("e_ident", {}).get(
-                        field,
-                        original_fields["e_ident"][field],
-                    )
-                    for field in self._E_INDENT_FIELDS
-                )
-                + tuple(
-                    fields.get(field, original_fields[field])
-                    for field in self._FIELDS
-                    if field != "e_ident"
-                )
-            ),
-        )
-        self.__write_data(self.__filename, _struct)
+        try:
+            self.__write_data(
+                self.__filename,
+                struct.pack(
+                    self.__WRITE_STRUCT_FORMAT,
+                    *tuple(
+                        fields["e_ident"][field]
+                        for field in self._E_INDENT_FIELDS
+                    ),
+                    *tuple(
+                        fields[field]
+                        for field in self._FIELDS
+                        if field != "e_ident"
+                    ),
+                ),
+            )
+        except (KeyError, struct.error):
+            raise ValueError("Unable to process data")
 
     def filename(self) -> str:
         if not os.path.isfile(self.__filename):
@@ -232,12 +231,7 @@ class ValidatedExecutableHeader(ExecutableHeader):
         return offset >= 0 and offset % 8 == 0
 
     def __validate_e_flags(self, e_flags: int, fields: dict) -> None:
-        e_machine = (
-            fields["e_machine"]
-            if "e_machine" in fields
-            else self.__origin.fields()["e_machine"]
-        )
-        if e_machine == self._EM_X86_64 and e_flags != 0:
+        if fields["e_machine"] == self._EM_X86_64 and e_flags != 0:
             raise ValueError("Nonzero e_flags unexpected for x86-64")
 
     def __validate_field_exists(self, field: str, fields: list):

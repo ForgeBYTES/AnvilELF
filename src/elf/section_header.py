@@ -116,26 +116,23 @@ class RawSectionHeader(SectionHeader):
                 )
             )
         except struct.error:
-            raise ValueError("Unable to process binary")
+            raise ValueError("Unable to process data")
 
     def change(self, fields: dict) -> None:
         if self.__filename is None or self.__offset is None:
             raise ValueError("Filename and offset must be provided")
 
-        original_fields = self.fields()
-        self.__write_data(
-            self.__filename,
-            self.__offset,
-            struct.pack(
-                self.__STRUCT_FORMAT,
-                *(
-                    tuple(
-                        fields.get(field, original_fields[field])
-                        for field in self._FIELDS
-                    )
+        try:
+            self.__write_data(
+                self.__filename,
+                self.__offset,
+                struct.pack(
+                    self.__STRUCT_FORMAT,
+                    *(fields[field] for field in self._FIELDS),
                 ),
-            ),
-        )
+            )
+        except (KeyError, struct.error):
+            raise ValueError("Unable to process data")
 
     def __data(self) -> bytes:
         if self.__raw_data is not None:
@@ -240,11 +237,6 @@ class ValidatedSectionHeader(SectionHeader):
         return (value & (value - 1)) == 0
 
     def __is_sh_addr_aligned(self, sh_addr: int, fields: dict) -> bool:
-        fields = (
-            self.__origin.fields()
-            if ("sh_flags" not in fields or "sh_addralign" not in fields)
-            else fields
-        )
         if fields["sh_flags"] & self._SHF_ALLOC:
             return (
                 sh_addr % fields["sh_addralign"] == 0

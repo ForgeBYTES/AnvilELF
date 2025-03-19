@@ -16,6 +16,22 @@ from tests.fixtures.fixtures import TemporaryFiles
 
 
 @pytest.fixture
+def expected_data():
+    return {
+        "sh_name": 27,
+        "sh_type": 1,
+        "sh_flags": 2,
+        "sh_addr": 792,
+        "sh_offset": 792,
+        "sh_size": 28,
+        "sh_link": 0,
+        "sh_info": 0,
+        "sh_addralign": 1,
+        "sh_entsize": 0,
+    }
+
+
+@pytest.fixture
 def prepare_temporary_binaries():
     files = TemporaryFiles(
         original_path="tests/samples/binaries",
@@ -41,19 +57,9 @@ def prepare_temporary_binaries():
         ),
     ],
 )
-def test_returning_fields_by_providing_filename_and_offset(_class):
-    expected_fields = {
-        "sh_name": 27,
-        "sh_type": 1,
-        "sh_flags": 2,
-        "sh_addr": 792,
-        "sh_offset": 792,
-        "sh_size": 28,
-        "sh_link": 0,
-        "sh_info": 0,
-        "sh_addralign": 1,
-        "sh_entsize": 0,
-    }
+def test_returning_fields_by_providing_filename_and_offset(
+    expected_data, _class
+):
     filename = "tests/samples/binaries/binary"
     offset = RawExecutableHeader(filename).fields()["e_shoff"]
 
@@ -62,7 +68,7 @@ def test_returning_fields_by_providing_filename_and_offset(_class):
         offset=offset + 64,
     ).fields()
 
-    assert fields == expected_fields
+    assert fields == expected_data
 
 
 @pytest.mark.parametrize(
@@ -77,24 +83,12 @@ def test_returning_fields_by_providing_filename_and_offset(_class):
         ),
     ],
 )
-def test_changing_sh_flags(prepare_temporary_binaries, _class):
-    original_sh_flags = 2
-    expected_sh_flags = 4
-    expected_fields = {
-        "sh_name": 27,
-        "sh_type": 1,
-        "sh_flags": expected_sh_flags,
-        "sh_addr": 792,
-        "sh_offset": 792,
-        "sh_size": 28,
-        "sh_link": 0,
-        "sh_info": 0,
-        "sh_addralign": 1,
-        "sh_entsize": 0,
-    }
-
+def test_changing_fields(prepare_temporary_binaries, expected_data, _class):
     filename = "tests/samples/temporary_binaries/binary"
     offset = RawExecutableHeader(filename).fields()["e_shoff"]
+
+    original_sh_flags = 2
+    expected_sh_flags = 4
 
     section_header = _class(
         filename=filename,
@@ -103,18 +97,56 @@ def test_changing_sh_flags(prepare_temporary_binaries, _class):
 
     assert section_header.fields()["sh_flags"] == original_sh_flags
 
-    section_header.change({"sh_flags": expected_sh_flags})
+    expected_data["sh_flags"] = expected_sh_flags
 
-    assert section_header.fields() == expected_fields
+    section_header.change(expected_data)
+
+    assert section_header.fields() == expected_data
+
+
+def test_raising_on_changing_fields_with_missing_key_in_expected_data(
+    prepare_temporary_binaries, expected_data
+):
+    filename = "tests/samples/temporary_binaries/binary"
+    offset = RawExecutableHeader(filename).fields()["e_shoff"]
+
+    expected_data["sh_flags"] = 4
+
+    del expected_data["sh_addr"]
+
+    with pytest.raises(ValueError, match="Unable to process data"):
+        RawSectionHeader(filename=filename, offset=offset + 64).change(
+            expected_data
+        )
 
 
 def test_raising_on_returning_fields_of_unprocessable_binary(
     mocker: MockerFixture,
 ):
-    mocker.patch("builtins.open", mocker.mock_open(read_data=b"unprocessable"))
+    mocker.patch(
+        "builtins.open", mocker.mock_open(read_data=b"unprocessable content")
+    )
 
-    with pytest.raises(ValueError, match="Unable to process binary"):
-        RawSectionHeader(filename="invalid", offset=5).fields()
+    with pytest.raises(ValueError, match="Unable to process data"):
+        RawSectionHeader(
+            filename="path/to/unprocessable_binary", offset=5
+        ).fields()
+
+
+def test_raising_on_changing_field_with_unprocessable_data_type(
+    prepare_temporary_binaries,
+    expected_data,
+):
+    filename = "tests/samples/temporary_binaries/binary"
+    offset = RawExecutableHeader(filename).fields()["e_shoff"]
+
+    expected_data["sh_flags"] = "unprocessable data type"
+
+    with pytest.raises(ValueError, match="Unable to process data"):
+        RawSectionHeader(
+            filename=filename,
+            offset=offset + 64,
+        ).change(expected_data)
 
 
 def test_raising_on_returning_fields_when_missing_filename_or_offset():
@@ -135,22 +167,26 @@ def test_raising_on_returning_fields_when_missing_filename_or_offset():
         RawSectionHeader().fields()
 
 
-def test_raising_on_changing_field_when_missing_filename_or_offset():
+def test_raising_on_changing_field_when_missing_filename_or_offset(
+    expected_data,
+):
     filename = "tests/samples/binaries/binary"
     offset = 13984
+
+    expected_data["sh_flags"] = 4
 
     with pytest.raises(
         ValueError, match="Filename and offset must be provided"
     ):
-        RawSectionHeader(filename=filename).change({"sh_flags": 4})
+        RawSectionHeader(filename=filename).change(expected_data)
     with pytest.raises(
         ValueError, match="Filename and offset must be provided"
     ):
-        RawSectionHeader(offset=offset + 64).change({"sh_flags": 4})
+        RawSectionHeader(offset=offset + 64).change(expected_data)
     with pytest.raises(
         ValueError, match="Filename and offset must be provided"
     ):
-        RawSectionHeader().change({"sh_flags": 4})
+        RawSectionHeader().change(expected_data)
 
 
 def test_raising_on_returning_fields_using_nonexistent_filename():
@@ -160,14 +196,15 @@ def test_raising_on_returning_fields_using_nonexistent_filename():
 
 def test_raising_on_changing_field_using_readonly_binary(
     prepare_temporary_binaries,
+    expected_data,
 ):
-    binary_path = "tests/samples/temporary_binaries/binary"
-    os.chmod(binary_path, stat.S_IREAD)
+    filename = "tests/samples/temporary_binaries/binary"
+    os.chmod(filename, stat.S_IREAD)
+
+    expected_data["sh_flags"] = 4
 
     with pytest.raises(ValueError, match="Failed to write to file"):
-        RawSectionHeader(filename=binary_path, offset=13984).change(
-            {"e_type": 1}
-        )
+        RawSectionHeader(filename=filename, offset=13984).change(expected_data)
 
 
 def test_returning_all_section_headers():
@@ -200,15 +237,17 @@ def test_raising_on_nonexistent_executable_header_filename():
     ],
 )
 def test_raising_on_changing_invalid_field_values(
-    prepare_temporary_binaries, field, value, error_message
+    prepare_temporary_binaries, expected_data, field, value, error_message
 ):
     filename = "tests/samples/temporary_binaries/binary"
     offset = RawExecutableHeader(filename).fields()["e_shoff"]
 
+    expected_data[field] = value
+
     with pytest.raises(ValueError, match=error_message):
         ValidatedSectionHeader(
             RawSectionHeader(filename=filename, offset=offset + 64)
-        ).change({field: value})
+        ).change(expected_data)
 
 
 @pytest.mark.parametrize(
@@ -222,7 +261,12 @@ def test_raising_on_changing_invalid_field_values(
     ],
 )
 def test_changing_sh_addr_alignment(
-    prepare_temporary_binaries, sh_flags, sh_addr, sh_addralign, should_pass
+    prepare_temporary_binaries,
+    expected_data,
+    sh_flags,
+    sh_addr,
+    sh_addralign,
+    should_pass,
 ):
     filename = "tests/samples/temporary_binaries/binary"
     offset = RawExecutableHeader(filename).fields()["e_shoff"]
@@ -230,17 +274,16 @@ def test_changing_sh_addr_alignment(
     section_header = ValidatedSectionHeader(
         RawSectionHeader(filename=filename, offset=offset + 64)
     )
-    fields = {
-        "sh_flags": sh_flags,
-        "sh_addr": sh_addr,
-        "sh_addralign": sh_addralign,
-    }
+
+    expected_data["sh_flags"] = sh_flags
+    expected_data["sh_addr"] = sh_addr
+    expected_data["sh_addralign"] = sh_addralign
 
     if should_pass:
-        section_header.change(fields)
+        section_header.change(expected_data)
     else:
         with pytest.raises(ValueError, match="Invalid value for sh_addr"):
-            section_header.change(fields)
+            section_header.change(expected_data)
 
 
 def test_returning_all_validated_section_headers_and_their_fields():

@@ -1,14 +1,9 @@
-import os
-import stat
-
 import pytest
-from pytest_mock import MockerFixture
 
 from src.elf.executable_header import (
     RawExecutableHeader,
     ValidatedExecutableHeader,
 )
-from tests.fixtures.fixtures import TemporaryFiles
 
 
 @pytest.fixture
@@ -40,48 +35,44 @@ def expected_data():
 
 
 @pytest.fixture
-def prepare_temporary_binaries():
-    files = TemporaryFiles(
-        original_path="tests/samples/binaries",
-        temporary_path="tests/samples/temporary_binaries",
-    )
-
-    files.copy()
-
-    yield
-
-    files.unlink()
+def raw_data(request) -> bytearray:
+    with open(request.param, "rb") as f:
+        return bytearray(f.read())
 
 
 @pytest.mark.parametrize(
     "_class",
     [
         RawExecutableHeader,
-        lambda filename: ValidatedExecutableHeader(
-            RawExecutableHeader(filename),
+        lambda raw_data: ValidatedExecutableHeader(
+            RawExecutableHeader(raw_data),
         ),
     ],
 )
-def test_returning_fields(expected_data, _class):
-    filename = "tests/samples/binaries/binary"
-
-    assert _class(filename).fields() == expected_data
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_returning_fields(raw_data, expected_data, _class):
+    assert _class(raw_data).fields() == expected_data
 
 
 @pytest.mark.parametrize(
     "_class",
     [
         RawExecutableHeader,
-        lambda path: ValidatedExecutableHeader(RawExecutableHeader(path)),
+        lambda raw_data: ValidatedExecutableHeader(
+            RawExecutableHeader(raw_data)
+        ),
     ],
 )
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 def test_changing_fields(
-    prepare_temporary_binaries,
-    expected_data,
+    raw_data,
     _class,
+    expected_data,
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-
     original_ei_data = 1
     original_e_type = 3
     expected_ei_data = 2
@@ -90,7 +81,7 @@ def test_changing_fields(
     expected_data["e_ident"]["EI_DATA"] = expected_ei_data
     expected_data["e_type"] = expected_e_type
 
-    executable_header = _class(filename)
+    executable_header = _class(raw_data)
 
     original_fields = executable_header.fields()
 
@@ -102,134 +93,106 @@ def test_changing_fields(
     assert executable_header.fields() == expected_data
 
 
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 def test_raising_on_changing_fields_with_missing_key_in_expected_data(
-    prepare_temporary_binaries, expected_data
+    raw_data, expected_data
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-
     expected_data["sh_flags"] = 4
 
     del expected_data["e_type"]
 
     with pytest.raises(ValueError, match="Unable to process data"):
-        RawExecutableHeader(filename).change(expected_data)
+        RawExecutableHeader(raw_data).change(expected_data)
 
 
-def test_raising_on_returning_fields_using_nonexistent_filename():
-    with pytest.raises(ValueError, match="Failed to read file"):
-        RawExecutableHeader("nonexistent").fields()
-
-
-def test_raising_on_changing_field_using_readonly_binary(
-    prepare_temporary_binaries,
-    expected_data,
-):
-    filename = "tests/samples/temporary_binaries/binary"
-    os.chmod(filename, stat.S_IREAD)
-
-    expected_data["e_type"] = 1
-
-    with pytest.raises(ValueError, match="Failed to write to file"):
-        RawExecutableHeader(filename).change(expected_data)
-
-
-def test_returning_existing_filename():
-    expected_path = "tests/samples/binaries/binary"
-
-    assert RawExecutableHeader(expected_path).filename() == expected_path
+def test_raising_on_returning_fields_of_unprocessable_binary():
+    with pytest.raises(ValueError, match="Unable to process data"):
+        RawExecutableHeader(bytearray(b"unprocessable data")).fields()
 
 
 @pytest.mark.parametrize(
-    "_class",
-    [
-        RawExecutableHeader,
-        lambda path: ValidatedExecutableHeader(RawExecutableHeader(path)),
-    ],
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_returning_nonexistent_filename(_class):
-    with pytest.raises(ValueError, match="Filename does not exist"):
-        _class("nonexistent").filename()
-
-
-def test_raising_on_returning_fields_of_unprocessable_binary(
-    mocker: MockerFixture,
-):
-    mocker.patch(
-        "builtins.open", mocker.mock_open(read_data=b"unprocessable content")
-    )
-
-    with pytest.raises(ValueError, match="Unable to process data"):
-        RawExecutableHeader("path/to/unprocessable_binary").fields()
-
-
 def test_raising_on_changing_field_with_unprocessable_data_type(
-    prepare_temporary_binaries,
+    raw_data,
     expected_data,
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-
     expected_data["e_type"] = "unprocessable data type"
 
     with pytest.raises(ValueError, match="Unable to process data"):
-        RawExecutableHeader(filename).change(expected_data)
+        RawExecutableHeader(raw_data).change(expected_data)
 
 
-def test_raising_on_32bit_type():
-    filename = "tests/samples/binaries/binary-32bit"
-
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-32bit"], indirect=True
+)
+def test_raising_on_32bit_type(raw_data):
     with pytest.raises(ValueError, match="Binary must be 64-bit"):
-        ValidatedExecutableHeader(RawExecutableHeader(filename)).fields()
+        ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
 
-def test_raising_on_getting_fields_with_malformed_ei_data():
-    filename = "tests/samples/binaries/binary-with-malformed-ei-data"
-
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/binaries/binary-with-malformed-ei-data"],
+    indirect=True,
+)
+def test_raising_on_getting_fields_with_malformed_ei_data(raw_data):
     with pytest.raises(ValueError, match="Invalid value for EI_DATA"):
-        ValidatedExecutableHeader(RawExecutableHeader(filename)).fields()
+        ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
 
-def test_raising_on_getting_fields_with_malformed_ei_version():
-    filename = "tests/samples/binaries/binary-with-malformed-ei-version"
-
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/binaries/binary-with-malformed-ei-version"],
+    indirect=True,
+)
+def test_raising_on_getting_fields_with_malformed_ei_version(raw_data):
     with pytest.raises(ValueError, match="Invalid value for EI_VERSION"):
-        ValidatedExecutableHeader(RawExecutableHeader(filename)).fields()
+        ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
 
-def test_raising_on_getting_fields_with_malformed_e_type():
-    filename = "tests/samples/binaries/binary-with-malformed-e-type"
-
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/binaries/binary-with-malformed-e-type"],
+    indirect=True,
+)
+def test_raising_on_getting_fields_with_malformed_e_type(raw_data):
     with pytest.raises(ValueError, match="Invalid value for e_type"):
-        ValidatedExecutableHeader(RawExecutableHeader(filename)).fields()
+        ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
 
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 def test_raising_on_changing_invalid_field(
-    prepare_temporary_binaries,
+    raw_data,
     expected_data,
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-
     expected_data["invalid"] = 1
 
     with pytest.raises(ValueError, match="Unknown field invalid"):
-        ValidatedExecutableHeader(RawExecutableHeader(filename)).change(
+        ValidatedExecutableHeader(RawExecutableHeader(raw_data)).change(
             expected_data
         )
 
 
-def test_raising_on_changing_invalid_e_ident_field(
-    prepare_temporary_binaries,
-    expected_data,
-):
-    filename = "tests/samples/temporary_binaries/binary"
-
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_changing_invalid_e_ident_field(raw_data, expected_data):
     expected_data["e_ident"]["invalid"] = 1
 
     with pytest.raises(ValueError, match="Unknown field invalid"):
-        ValidatedExecutableHeader(RawExecutableHeader(filename)).change(
+        ValidatedExecutableHeader(RawExecutableHeader(raw_data)).change(
             expected_data
         )
 
 
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 @pytest.mark.parametrize(
     "field, invalid_value, error_message",
     [
@@ -243,22 +206,23 @@ def test_raising_on_changing_invalid_e_ident_field(
     ],
 )
 def test_raising_on_changing_invalid_field_values(
-    prepare_temporary_binaries,
+    raw_data,
     expected_data,
     field,
     invalid_value,
     error_message,
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-
     expected_data[field] = invalid_value
 
     with pytest.raises(ValueError, match=error_message):
-        ValidatedExecutableHeader(RawExecutableHeader(filename)).change(
+        ValidatedExecutableHeader(RawExecutableHeader(raw_data)).change(
             expected_data
         )
 
 
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 @pytest.mark.parametrize(
     "field, invalid_value, error_message",
     [
@@ -268,17 +232,15 @@ def test_raising_on_changing_invalid_field_values(
     ],
 )
 def test_raising_on_changing_invalid_e_ident_field_values(
-    prepare_temporary_binaries,
+    raw_data,
     expected_data,
     field,
     invalid_value,
     error_message,
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-
     expected_data["e_ident"][field] = invalid_value
 
     with pytest.raises(ValueError, match=error_message):
-        ValidatedExecutableHeader(RawExecutableHeader(filename)).change(
+        ValidatedExecutableHeader(RawExecutableHeader(raw_data)).change(
             expected_data
         )

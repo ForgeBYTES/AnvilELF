@@ -97,95 +97,56 @@ class SectionHeaders(ABC):
 class RawSectionHeader(SectionHeader):
     __STRUCT_FORMAT = "<IIQQQQIIQQ"
 
-    def __init__(
-        self,
-        offset: int | None = None,
-        filename: str | None = None,
-        raw_data: bytes | None = None,
-    ):
-        self.__offset = offset
-        self.__filename = filename
+    def __init__(self, raw_data: bytearray, offset: int):
         self.__raw_data = raw_data
+        self.__offset = offset
 
     def fields(self) -> dict:
         try:
             return dict(
                 zip(
                     self._FIELDS,
-                    struct.unpack(self.__STRUCT_FORMAT, self.__data()),
+                    struct.unpack(
+                        self.__STRUCT_FORMAT,
+                        self.__raw_data[
+                            self.__offset : self.__offset  # noqa: E203
+                            + self._HEADER_SIZE
+                        ],
+                    ),
                 )
             )
         except struct.error:
             raise ValueError("Unable to process data")
 
     def change(self, fields: dict) -> None:
-        if self.__filename is None or self.__offset is None:
-            raise ValueError("Filename and offset must be provided")
-
         try:
-            self.__write_data(
-                self.__filename,
-                self.__offset,
-                struct.pack(
-                    self.__STRUCT_FORMAT,
-                    *(fields[field] for field in self._FIELDS),
-                ),
+            _struct = struct.pack(
+                self.__STRUCT_FORMAT,
+                *(fields[field] for field in self._FIELDS),
             )
+            self.__raw_data[
+                self.__offset : self.__offset + self._HEADER_SIZE  # noqa: E203
+            ] = _struct
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")
 
-    def __data(self) -> bytes:
-        if self.__raw_data is not None:
-            return self.__raw_data
-
-        if self.__filename is None or self.__offset is None:
-            raise ValueError("Filename and offset must be provided")
-
-        try:
-            with open(self.__filename, "rb") as file:
-                file.seek(self.__offset)
-                return file.read(self._HEADER_SIZE)
-        except OSError:
-            raise ValueError("Failed to read file")
-
-    def __write_data(self, filename: str, offset: int, data: bytes) -> None:
-        try:
-            with open(filename, "r+b") as file:
-                file.seek(offset)
-                file.write(data)
-        except OSError:
-            raise ValueError("Failed to write to file")
-
 
 class RawSectionHeaders(SectionHeaders):
-    def __init__(self, executable_header: ExecutableHeader):
+    def __init__(
+        self, raw_data: bytearray, executable_header: ExecutableHeader
+    ):
+        self.__raw_data = raw_data
         self.__executable_header = executable_header
 
     def all(self) -> list[SectionHeader]:
         fields = self.__executable_header.fields()
-        data = self.__data(
-            self.__executable_header.filename(),
-            fields["e_shoff"],
-            fields["e_shnum"],
-            fields["e_shentsize"],
-        )
-
         return [
-            self.__header(data, index, fields["e_shentsize"])
+            RawSectionHeader(
+                self.__raw_data,
+                fields["e_shoff"] + index * fields["e_shentsize"],
+            )
             for index in range(fields["e_shnum"])
         ]
-
-    def __header(self, data: bytes, index: int, size: int) -> SectionHeader:
-        return RawSectionHeader(
-            raw_data=data[index * size : (index + 1) * size]  # noqa: E203
-        )
-
-    def __data(
-        self, filename: str, offset: int, count: int, size: int
-    ) -> bytes:
-        with open(filename, "rb") as file:
-            file.seek(offset)
-            return file.read(count * size)
 
 
 class ValidatedSectionHeader(SectionHeader):

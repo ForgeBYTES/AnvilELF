@@ -1,4 +1,3 @@
-import os
 import struct
 from abc import ABC, abstractmethod
 
@@ -57,91 +56,61 @@ class ExecutableHeader(ABC):
     def change(self, fields: dict) -> None:  # pragma: no cover
         pass
 
-    @abstractmethod
-    def filename(self) -> str:  # pragma: no cover
-        pass
-
 
 class RawExecutableHeader(ExecutableHeader):
-    __READ_STRUCT_FORMAT = "<16sHHIQQQIHHHHHH"
-    __WRITE_STRUCT_FORMAT = "<4sBBBBB7sHHIQQQIHHHHHH"
+    __STRUCT_FORMAT = "<4sBBBBB7sHHIQQQIHHHHHH"
 
-    def __init__(self, filename: str):
-        self.__filename = filename
+    def __init__(self, raw_data: bytearray):
+        self.__raw_data = raw_data
 
     def fields(self) -> dict:
         try:
             _struct = struct.unpack(
-                self.__READ_STRUCT_FORMAT,
-                self.__data(self.__filename)[
-                    : struct.calcsize(self.__READ_STRUCT_FORMAT)
-                ],
+                self.__STRUCT_FORMAT, self.__raw_data[: self._HEADER_SIZE]
             )
         except struct.error:
             raise ValueError("Unable to process data")
+
         return {
             "e_ident": {
-                "EI_MAG": _struct[0][:4],
-                "EI_CLASS": _struct[0][4],
-                "EI_DATA": _struct[0][5],
-                "EI_VERSION": _struct[0][6],
-                "EI_OSABI": _struct[0][7],
-                "EI_ABIVERSION": _struct[0][8],
-                "EI_PAD": _struct[0][9:16],
+                "EI_MAG": _struct[0],
+                "EI_CLASS": _struct[1],
+                "EI_DATA": _struct[2],
+                "EI_VERSION": _struct[3],
+                "EI_OSABI": _struct[4],
+                "EI_ABIVERSION": _struct[5],
+                "EI_PAD": _struct[6],
             },
-            "e_type": _struct[1],
-            "e_machine": _struct[2],
-            "e_version": _struct[3],
-            "e_entry": _struct[4],
-            "e_phoff": _struct[5],
-            "e_shoff": _struct[6],
-            "e_flags": _struct[7],
-            "e_ehsize": _struct[8],
-            "e_phentsize": _struct[9],
-            "e_phnum": _struct[10],
-            "e_shentsize": _struct[11],
-            "e_shnum": _struct[12],
-            "e_shstrndx": _struct[13],
+            "e_type": _struct[7],
+            "e_machine": _struct[8],
+            "e_version": _struct[9],
+            "e_entry": _struct[10],
+            "e_phoff": _struct[11],
+            "e_shoff": _struct[12],
+            "e_flags": _struct[13],
+            "e_ehsize": _struct[14],
+            "e_phentsize": _struct[15],
+            "e_phnum": _struct[16],
+            "e_shentsize": _struct[17],
+            "e_shnum": _struct[18],
+            "e_shstrndx": _struct[19],
         }
 
     def change(self, fields: dict) -> None:
         try:
-            self.__write_data(
-                self.__filename,
-                struct.pack(
-                    self.__WRITE_STRUCT_FORMAT,
-                    *tuple(
-                        fields["e_ident"][field]
-                        for field in self._E_INDENT_FIELDS
-                    ),
-                    *tuple(
-                        fields[field]
-                        for field in self._FIELDS
-                        if field != "e_ident"
-                    ),
+            self.__raw_data[: self._HEADER_SIZE] = struct.pack(
+                self.__STRUCT_FORMAT,
+                *tuple(
+                    fields["e_ident"][field] for field in self._E_INDENT_FIELDS
+                ),
+                *tuple(
+                    fields[field]
+                    for field in self._FIELDS
+                    if field != "e_ident"
                 ),
             )
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")
-
-    def filename(self) -> str:
-        if not os.path.isfile(self.__filename):
-            raise ValueError("Filename does not exist")
-        return self.__filename
-
-    def __data(self, filename: str) -> bytes:
-        try:
-            with open(filename, "rb") as file:
-                return file.read(self._HEADER_SIZE)
-        except OSError:
-            raise ValueError("Failed to read file")
-
-    def __write_data(self, filename: str, data: bytes) -> None:
-        try:
-            with open(filename, "r+b") as file:
-                file.write(data)
-        except OSError:
-            raise ValueError("Failed to write to file")
 
 
 class ValidatedExecutableHeader(ExecutableHeader):
@@ -150,23 +119,16 @@ class ValidatedExecutableHeader(ExecutableHeader):
 
     def fields(self) -> dict:
         fields = self.__origin.fields()
-
         self.__validate_all(fields)
-
         return fields
 
     def change(self, fields: dict) -> None:
         self.__validate(fields)
-
         return self.__origin.change(fields)
-
-    def filename(self) -> str:
-        return self.__origin.filename()
 
     def __validate_all(self, fields: dict) -> None:
         if not self.__is_64_bit(fields):
             raise ValueError("Binary must be 64-bit")
-
         self.__validate(fields)
 
     def __is_64_bit(self, fields: dict) -> bool:

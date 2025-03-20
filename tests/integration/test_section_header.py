@@ -1,8 +1,4 @@
-import os
-import stat
-
 import pytest
-from pytest_mock import MockerFixture
 
 from src.elf.executable_header import RawExecutableHeader
 from src.elf.section_header import (
@@ -12,7 +8,6 @@ from src.elf.section_header import (
     ValidatedSectionHeader,
     ValidatedSectionHeaders,
 )
-from tests.fixtures.fixtures import TemporaryFiles
 
 
 @pytest.fixture
@@ -32,39 +27,31 @@ def expected_data():
 
 
 @pytest.fixture
-def prepare_temporary_binaries():
-    files = TemporaryFiles(
-        original_path="tests/samples/binaries",
-        temporary_path="tests/samples/temporary_binaries",
-    )
-
-    files.copy()
-
-    yield
-
-    files.unlink()
+def raw_data(request) -> bytearray:
+    with open(request.param, "rb") as f:
+        return bytearray(f.read())
 
 
 @pytest.mark.parametrize(
     "_class",
     [
         RawSectionHeader,
-        lambda filename, offset: ValidatedSectionHeader(
+        lambda raw_data, offset: ValidatedSectionHeader(
             RawSectionHeader(
-                filename=filename,
+                raw_data=raw_data,
                 offset=offset,
             )
         ),
     ],
 )
-def test_returning_fields_by_providing_filename_and_offset(
-    expected_data, _class
-):
-    filename = "tests/samples/binaries/binary"
-    offset = RawExecutableHeader(filename).fields()["e_shoff"]
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_returning_fields(raw_data, expected_data, _class):
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     fields = _class(
-        filename=filename,
+        raw_data=raw_data,
         offset=offset + 64,
     ).fields()
 
@@ -75,23 +62,25 @@ def test_returning_fields_by_providing_filename_and_offset(
     "_class",
     [
         RawSectionHeader,
-        lambda filename, offset: ValidatedSectionHeader(
+        lambda raw_data, offset: ValidatedSectionHeader(
             RawSectionHeader(
-                filename=filename,
+                raw_data=raw_data,
                 offset=offset,
             )
         ),
     ],
 )
-def test_changing_fields(prepare_temporary_binaries, expected_data, _class):
-    filename = "tests/samples/temporary_binaries/binary"
-    offset = RawExecutableHeader(filename).fields()["e_shoff"]
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_changing_fields(raw_data, expected_data, _class):
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     original_sh_flags = 2
     expected_sh_flags = 4
 
     section_header = _class(
-        filename=filename,
+        raw_data=raw_data,
         offset=offset + 64,
     )
 
@@ -104,125 +93,60 @@ def test_changing_fields(prepare_temporary_binaries, expected_data, _class):
     assert section_header.fields() == expected_data
 
 
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 def test_raising_on_changing_fields_with_missing_key_in_expected_data(
-    prepare_temporary_binaries, expected_data
+    raw_data, expected_data
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-    offset = RawExecutableHeader(filename).fields()["e_shoff"]
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     expected_data["sh_flags"] = 4
 
     del expected_data["sh_addr"]
 
     with pytest.raises(ValueError, match="Unable to process data"):
-        RawSectionHeader(filename=filename, offset=offset + 64).change(
+        RawSectionHeader(raw_data=raw_data, offset=offset + 64).change(
             expected_data
         )
 
 
-def test_raising_on_returning_fields_of_unprocessable_binary(
-    mocker: MockerFixture,
-):
-    mocker.patch(
-        "builtins.open", mocker.mock_open(read_data=b"unprocessable content")
-    )
-
+def test_raising_on_returning_fields_of_unprocessable_binary():
     with pytest.raises(ValueError, match="Unable to process data"):
         RawSectionHeader(
-            filename="path/to/unprocessable_binary", offset=5
+            raw_data=bytearray(b"unprocessable data"), offset=5
         ).fields()
 
 
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 def test_raising_on_changing_field_with_unprocessable_data_type(
-    prepare_temporary_binaries,
-    expected_data,
+    raw_data, expected_data
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-    offset = RawExecutableHeader(filename).fields()["e_shoff"]
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     expected_data["sh_flags"] = "unprocessable data type"
 
     with pytest.raises(ValueError, match="Unable to process data"):
         RawSectionHeader(
-            filename=filename,
+            raw_data=raw_data,
             offset=offset + 64,
         ).change(expected_data)
 
 
-def test_raising_on_returning_fields_when_missing_filename_or_offset():
-    filename = "tests/samples/binaries/binary"
-    offset = 13984
-
-    with pytest.raises(
-        ValueError, match="Filename and offset must be provided"
-    ):
-        RawSectionHeader(filename=filename).fields()
-    with pytest.raises(
-        ValueError, match="Filename and offset must be provided"
-    ):
-        RawSectionHeader(offset=offset + 64).fields()
-    with pytest.raises(
-        ValueError, match="Filename and offset must be provided"
-    ):
-        RawSectionHeader().fields()
-
-
-def test_raising_on_changing_field_when_missing_filename_or_offset(
-    expected_data,
-):
-    filename = "tests/samples/binaries/binary"
-    offset = 13984
-
-    expected_data["sh_flags"] = 4
-
-    with pytest.raises(
-        ValueError, match="Filename and offset must be provided"
-    ):
-        RawSectionHeader(filename=filename).change(expected_data)
-    with pytest.raises(
-        ValueError, match="Filename and offset must be provided"
-    ):
-        RawSectionHeader(offset=offset + 64).change(expected_data)
-    with pytest.raises(
-        ValueError, match="Filename and offset must be provided"
-    ):
-        RawSectionHeader().change(expected_data)
-
-
-def test_raising_on_returning_fields_using_nonexistent_filename():
-    with pytest.raises(ValueError, match="Failed to read file"):
-        RawSectionHeader(filename="nonexistent", offset=13984).fields()
-
-
-def test_raising_on_changing_field_using_readonly_binary(
-    prepare_temporary_binaries,
-    expected_data,
-):
-    filename = "tests/samples/temporary_binaries/binary"
-    os.chmod(filename, stat.S_IREAD)
-
-    expected_data["sh_flags"] = 4
-
-    with pytest.raises(ValueError, match="Failed to write to file"):
-        RawSectionHeader(filename=filename, offset=13984).change(expected_data)
-
-
-def test_returning_all_section_headers():
-    filename = "tests/samples/binaries/binary"
-
-    executable_header = RawExecutableHeader(filename)
-    section_headers = RawSectionHeaders(executable_header).all()
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_returning_all_section_headers(raw_data):
+    executable_header = RawExecutableHeader(raw_data)
+    section_headers = RawSectionHeaders(raw_data, executable_header).all()
 
     assert len(section_headers) == executable_header.fields()["e_shnum"]
     assert all(
         isinstance(section_header, SectionHeader)
         for section_header in section_headers
     )
-
-
-def test_raising_on_nonexistent_executable_header_filename():
-    with pytest.raises(ValueError, match="Failed to read file"):
-        RawSectionHeaders(RawExecutableHeader("nonexistent")).all()
 
 
 @pytest.mark.parametrize(
@@ -236,17 +160,19 @@ def test_raising_on_nonexistent_executable_header_filename():
         ("invalid", 2, "Unknown field invalid"),
     ],
 )
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 def test_raising_on_changing_invalid_field_values(
-    prepare_temporary_binaries, expected_data, field, value, error_message
+    raw_data, expected_data, field, value, error_message
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-    offset = RawExecutableHeader(filename).fields()["e_shoff"]
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     expected_data[field] = value
 
     with pytest.raises(ValueError, match=error_message):
         ValidatedSectionHeader(
-            RawSectionHeader(filename=filename, offset=offset + 64)
+            RawSectionHeader(raw_data=raw_data, offset=offset + 64)
         ).change(expected_data)
 
 
@@ -260,19 +186,21 @@ def test_raising_on_changing_invalid_field_values(
         (0x0, 0x1003, 8, True),
     ],
 )
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 def test_changing_sh_addr_alignment(
-    prepare_temporary_binaries,
+    raw_data,
     expected_data,
     sh_flags,
     sh_addr,
     sh_addralign,
     should_pass,
 ):
-    filename = "tests/samples/temporary_binaries/binary"
-    offset = RawExecutableHeader(filename).fields()["e_shoff"]
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     section_header = ValidatedSectionHeader(
-        RawSectionHeader(filename=filename, offset=offset + 64)
+        RawSectionHeader(raw_data=raw_data, offset=offset + 64)
     )
 
     expected_data["sh_flags"] = sh_flags
@@ -286,7 +214,10 @@ def test_changing_sh_addr_alignment(
             section_header.change(expected_data)
 
 
-def test_returning_all_validated_section_headers_and_their_fields():
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_returning_all_validated_section_headers_and_their_fields(raw_data):
     expected_fields = [
         "sh_name",
         "sh_type",
@@ -300,11 +231,9 @@ def test_returning_all_validated_section_headers_and_their_fields():
         "sh_entsize",
     ]
 
-    filename = "tests/samples/binaries/binary"
-
-    executable_header = RawExecutableHeader(filename)
+    executable_header = RawExecutableHeader(raw_data)
     section_headers = ValidatedSectionHeaders(
-        RawSectionHeaders(executable_header)
+        RawSectionHeaders(raw_data, executable_header)
     ).all()
 
     assert len(section_headers) == executable_header.fields()["e_shnum"]

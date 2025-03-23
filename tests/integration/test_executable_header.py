@@ -94,6 +94,36 @@ def test_changing_fields(
 
 
 @pytest.mark.parametrize(
+    "_class",
+    [
+        RawExecutableHeader,
+        lambda raw_data: ValidatedExecutableHeader(
+            RawExecutableHeader(raw_data),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_string_representation(raw_data, expected_data, _class):
+    expected_string = (
+        "Executable Header:\n"
+        "  Magic: \x7fELF\n"
+        "  Class: 2\n"
+        "  Data: 1\n"
+        "  Version: 1\n"
+        "  OS/ABI: 0\n"
+        "  ABI Version: 0\n"
+        "  Type: 3\n"
+        "  Machine: 62\n"
+        "  Entry point: 0x1060\n"
+        "  Start of section headers: 13984\n"
+        "  Number of section headers: 31\n"
+    )
+    assert str(_class(raw_data)) == expected_string
+
+
+@pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_fields_with_missing_key_in_expected_data(

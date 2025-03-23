@@ -50,3 +50,29 @@ def test_returning_name_offset_if_string_table_is_not_present(raw_data):
         RawSection(raw_data, RawSectionHeader(raw_data, offset + 64)).name()
         == expected_string_offset
     )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_string_representation(raw_data):
+    expected_string = (
+        "Section:\n"
+        "  Section: .shstrtab\n"
+        "  Offset: 0x0000357f\n"
+        "  Size: 0x0000011a (282 bytes)\n"
+        "  Data: 00 2e 73 79 6d 74 61 62 00 2e 73 74 72 74 61 62 00 2e 73 68 "
+        "73 74 72 74 61 62 00 2e 69 6e 74 65 ...\n"
+        "  ASCII: ..symtab..strtab..shstrtab..inte ...\n"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+    e_shstrndx = executable_header.fields()["e_shstrndx"]
+
+    shstrtab = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    ).all()[e_shstrndx]
+
+    assert str(shstrtab) == expected_string

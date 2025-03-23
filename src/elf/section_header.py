@@ -85,6 +85,10 @@ class SectionHeader(ABC):
     def change(self, fields: dict) -> None:  # pragma: no cover
         pass
 
+    @abstractmethod
+    def __str__(self) -> str:  # pragma: no cover
+        pass
+
 
 class SectionHeaders(ABC):
     _HEADER_SIZE = 64
@@ -130,6 +134,18 @@ class RawSectionHeader(SectionHeader):
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")
 
+    def __str__(self) -> str:
+        fields = self.fields()
+        return (
+            "Section Header:\n"
+            f"  Type: {fields['sh_type']}\n"
+            f"  Flags: {hex(fields['sh_flags'])}\n"
+            f"  Addr: 0x{fields['sh_addr']:x}\n"
+            f"  Offset: {fields['sh_offset']}\n"
+            f"  Size: {fields['sh_size']} bytes\n"
+            f"  Align: {fields['sh_addralign']}\n"
+        )
+
 
 class RawSectionHeaders(SectionHeaders):
     def __init__(
@@ -161,6 +177,9 @@ class ValidatedSectionHeader(SectionHeader):
     def change(self, fields: dict) -> None:
         self.__validate(fields)
         self.__origin.change(fields)
+
+    def __str__(self) -> str:
+        return self.__origin.__str__()
 
     def __validate(self, fields: dict) -> None:
         for field, value in fields.items():

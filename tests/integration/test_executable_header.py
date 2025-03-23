@@ -108,7 +108,7 @@ def test_changing_fields(
 def test_string_representation(raw_data, expected_data, _class):
     expected_string = (
         "Executable Header:\n"
-        "  Magic: \x7fELF\n"
+        "  Magic: 7f 45 4c 46\n"
         "  Class: 2\n"
         "  Data: 1\n"
         "  Version: 1\n"

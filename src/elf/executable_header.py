@@ -117,10 +117,9 @@ class RawExecutableHeader(ExecutableHeader):
 
     def __str__(self) -> str:
         fields = self.fields()
-        magic = fields["e_ident"]["EI_MAG"].decode("ascii")
         return (
             "Executable Header:\n"
-            f"  Magic: {magic}\n"
+            f"  Magic: {self.__magic(fields)}\n"
             f"  Class: {fields['e_ident']['EI_CLASS']}\n"
             f"  Data: {fields['e_ident']['EI_DATA']}\n"
             f"  Version: {fields['e_ident']['EI_VERSION']}\n"
@@ -132,6 +131,9 @@ class RawExecutableHeader(ExecutableHeader):
             f"  Start of section headers: {fields['e_shoff']}\n"
             f"  Number of section headers: {fields['e_shnum']}\n"
         )
+
+    def __magic(self, fields: dict) -> str:
+        return " ".join(f"{byte:02x}" for byte in fields["e_ident"]["EI_MAG"])
 
 
 class ValidatedExecutableHeader(ExecutableHeader):

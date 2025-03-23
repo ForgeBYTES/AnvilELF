@@ -94,6 +94,39 @@ def test_changing_fields(raw_data, expected_data, _class):
 
 
 @pytest.mark.parametrize(
+    "_class",
+    [
+        RawSectionHeader,
+        lambda raw_data, offset: ValidatedSectionHeader(
+            RawSectionHeader(
+                raw_data=raw_data,
+                offset=offset,
+            )
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_string_representation(raw_data, expected_data, _class):
+    expected_string = (
+        "Section Header:\n"
+        "  Type: 1\n"
+        "  Flags: 0x2\n"
+        "  Addr: 0x318\n"
+        "  Offset: 792\n"
+        "  Size: 28 bytes\n"
+        "  Align: 1\n"
+    )
+
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
+
+    assert (
+        str(_class(raw_data=raw_data, offset=offset + 64)) == expected_string
+    )
+
+
+@pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_fields_with_missing_key_in_expected_data(

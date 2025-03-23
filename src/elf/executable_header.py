@@ -56,6 +56,10 @@ class ExecutableHeader(ABC):
     def change(self, fields: dict) -> None:  # pragma: no cover
         pass
 
+    @abstractmethod
+    def __str__(self) -> str:  # pragma: no cover
+        pass
+
 
 class RawExecutableHeader(ExecutableHeader):
     __STRUCT_FORMAT = "<4sBBBBB7sHHIQQQIHHHHHH"
@@ -70,7 +74,6 @@ class RawExecutableHeader(ExecutableHeader):
             )
         except struct.error:
             raise ValueError("Unable to process data")
-
         return {
             "e_ident": {
                 "EI_MAG": _struct[0],
@@ -112,6 +115,24 @@ class RawExecutableHeader(ExecutableHeader):
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")
 
+    def __str__(self) -> str:
+        fields = self.fields()
+        magic = fields["e_ident"]["EI_MAG"].decode("ascii")
+        return (
+            "Executable Header:\n"
+            f"  Magic: {magic}\n"
+            f"  Class: {fields['e_ident']['EI_CLASS']}\n"
+            f"  Data: {fields['e_ident']['EI_DATA']}\n"
+            f"  Version: {fields['e_ident']['EI_VERSION']}\n"
+            f"  OS/ABI: {fields['e_ident']['EI_OSABI']}\n"
+            f"  ABI Version: {fields['e_ident']['EI_ABIVERSION']}\n"
+            f"  Type: {fields['e_type']}\n"
+            f"  Machine: {fields['e_machine']}\n"
+            f"  Entry point: 0x{fields['e_entry']:x}\n"
+            f"  Start of section headers: {fields['e_shoff']}\n"
+            f"  Number of section headers: {fields['e_shnum']}\n"
+        )
+
 
 class ValidatedExecutableHeader(ExecutableHeader):
     def __init__(self, origin: ExecutableHeader):
@@ -125,6 +146,9 @@ class ValidatedExecutableHeader(ExecutableHeader):
     def change(self, fields: dict) -> None:
         self.__validate(fields)
         return self.__origin.change(fields)
+
+    def __str__(self) -> str:
+        return self.__origin.__str__()
 
     def __validate_all(self, fields: dict) -> None:
         if not self.__is_64_bit(fields):
@@ -168,7 +192,6 @@ class ValidatedExecutableHeader(ExecutableHeader):
                 case _:
                     self.__validate_field_exists(field, self._FIELDS)
                     continue
-
             raise ValueError(f"Invalid value for {field}")
 
     def __validate_e_ident(self, fields: dict):
@@ -186,7 +209,6 @@ class ValidatedExecutableHeader(ExecutableHeader):
                 case _:
                     self.__validate_field_exists(field, self._E_INDENT_FIELDS)
                     continue
-
             raise ValueError(f"Invalid value for {field}")
 
     def __is_aligned(self, offset: int) -> bool:

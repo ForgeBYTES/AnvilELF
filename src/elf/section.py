@@ -13,6 +13,10 @@ class Section(ABC):
     def name(self) -> str:
         pass  # pragma: no cover
 
+    @abstractmethod
+    def __str__(self) -> str:  # pragma: no cover
+        pass
+
 
 class Sections(ABC):
     @abstractmethod
@@ -46,7 +50,27 @@ class RawSection(Section):
         sh_name = self.__section_header.fields()["sh_name"]
         return data[
             sh_name : data.find(b"\x00", sh_name)  # noqa: E203
-        ].decode("utf-8")
+        ].decode("ascii")
+
+    def __str__(self) -> str:
+        fields = self.__section_header.fields()
+        data = self.data()[:32]
+        return (
+            "Section:\n"
+            f"  Section: {self.name()}\n"
+            f"  Offset: 0x{fields['sh_offset']:08x}\n"
+            f"  Size: 0x{fields['sh_size']:08x} ({fields['sh_size']} bytes)\n"
+            f"  Data: {self.__hex_dump(data)} ...\n"
+            f"  ASCII: {self.__ascii_dump(data)} ...\n"
+        )
+
+    def __hex_dump(self, data: bytes):
+        return " ".join(f"{byte:02x}" for byte in data)
+
+    def __ascii_dump(self, data: bytes):
+        return "".join(
+            chr(byte) if 32 <= byte <= 126 else "." for byte in data
+        )
 
 
 class RawSections(ABC):

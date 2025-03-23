@@ -53,14 +53,14 @@ def test_returning_name_offset_if_string_table_is_not_present(raw_data):
 
 
 @pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
 def test_string_representation(raw_data):
     expected_string = (
         "Section:\n"
         "  Section: .shstrtab\n"
-        "  Offset: 0x0000357f\n"
-        "  Size: 0x0000011a (282 bytes)\n"
+        "  Offset: 0x00004993\n"
+        "  Size: 0x0000018a (394 bytes)\n"
         "  Data: 00 2e 73 79 6d 74 61 62 00 2e 73 74 72 74 61 62 00 2e 73 68 "
         "73 74 72 74 61 62 00 2e 69 6e 74 65 ...\n"
         "  ASCII: ..symtab..strtab..shstrtab..inte ...\n"

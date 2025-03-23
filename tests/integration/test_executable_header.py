@@ -103,7 +103,7 @@ def test_changing_fields(
     ],
 )
 @pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
 def test_string_representation(raw_data, expected_data, _class):
     expected_string = (
@@ -116,9 +116,9 @@ def test_string_representation(raw_data, expected_data, _class):
         "  ABI Version: 0\n"
         "  Type: 3\n"
         "  Machine: 62\n"
-        "  Entry point: 0x1060\n"
-        "  Start of section headers: 13984\n"
-        "  Number of section headers: 31\n"
+        "  Entry point: 0x1260\n"
+        "  Start of section headers: 19232\n"
+        "  Number of section headers: 39\n"
     )
     assert str(_class(raw_data)) == expected_string
 

@@ -106,7 +106,7 @@ def test_changing_fields(raw_data, expected_data, _class):
     ],
 )
 @pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
 def test_string_representation(raw_data, expected_data, _class):
     expected_string = (

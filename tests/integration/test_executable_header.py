@@ -124,6 +124,38 @@ def test_string_representation(raw_data, expected_data, _class):
 
 
 @pytest.mark.parametrize(
+    "_class",
+    [
+        RawExecutableHeader,
+        lambda raw_data: ValidatedExecutableHeader(
+            RawExecutableHeader(raw_data),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+)
+def test_string_representation_on_stripped_binary(
+    raw_data, expected_data, _class
+):
+    expected_string = (
+        "Executable Header:\n"
+        "  Magic: 7f 45 4c 46\n"
+        "  Class: 2\n"
+        "  Data: 1\n"
+        "  Version: 1\n"
+        "  OS/ABI: 0\n"
+        "  ABI Version: 0\n"
+        "  Type: 3\n"
+        "  Machine: 62\n"
+        "  Entry point: 0x1260\n"
+        "  Start of section headers: 12616\n"
+        "  Number of section headers: 29\n"
+    )
+    assert str(_class(raw_data)) == expected_string
+
+
+@pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_fields_with_missing_key_in_expected_data(

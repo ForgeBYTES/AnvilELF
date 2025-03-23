@@ -76,3 +76,29 @@ def test_string_representation(raw_data):
     ).all()[e_shstrndx]
 
     assert str(shstrtab) == expected_string
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+)
+def test_string_representation_on_stripped_binary(raw_data):
+    expected_string = (
+        "Section:\n"
+        "  Section: .shstrtab\n"
+        "  Offset: 0x0000303b\n"
+        "  Size: 0x0000010a (266 bytes)\n"
+        "  Data: 00 2e 73 68 73 74 72 74 61 62 00 2e 69 6e 74 65 72 70 00 2e "
+        "6e 6f 74 65 2e 67 6e 75 2e 70 72 6f ...\n"
+        "  ASCII: ..shstrtab..interp..note.gnu.pro ...\n"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+    e_shstrndx = executable_header.fields()["e_shstrndx"]
+
+    shstrtab = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    ).all()[e_shstrndx]
+
+    assert str(shstrtab) == expected_string

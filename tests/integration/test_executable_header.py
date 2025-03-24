@@ -105,7 +105,7 @@ def test_changing_fields(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_string_representation(raw_data, expected_data, _class):
+def test_string_representation(raw_data, _class):
     expected_string = (
         "Executable Header:\n"
         "  Magic: 7f 45 4c 46\n"
@@ -135,9 +135,7 @@ def test_string_representation(raw_data, expected_data, _class):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_string_representation_on_stripped_binary(
-    raw_data, expected_data, _class
-):
+def test_string_representation_on_stripped_binary(raw_data, _class):
     expected_string = (
         "Executable Header:\n"
         "  Magic: 7f 45 4c 46\n"

@@ -55,7 +55,7 @@ class RawSection(Section):
     def __str__(self) -> str:
         data = self.data()[:32]
         return str(self.__section_header) + (
-            "\nSection:\n"
+            "Section:\n"
             f"  Name: {self.name()}\n"
             f"  Data: {self.__hex_dump(data)} ...\n"
             f"  ASCII: {self.__ascii_dump(data)} ...\n"

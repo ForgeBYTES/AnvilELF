@@ -270,7 +270,7 @@ def test_raising_on_changing_invalid_field_values(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_nonzero_sh_info_in_sht_dynamic(raw_data, expected_data):
+def test_raising_on_nonzero_sh_info_in_sht_dynamic(raw_data):
     expected_data = {
         "sh_name": 253,
         "sh_type": 6,
@@ -301,7 +301,7 @@ def test_raising_on_nonzero_sh_info_in_sht_dynamic(raw_data, expected_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_zero_sh_entsize_in_sht_dynamic(raw_data, expected_data):
+def test_raising_on_zero_sh_entsize_in_sht_dynamic(raw_data):
     expected_data = {
         "sh_name": 253,
         "sh_type": 6,

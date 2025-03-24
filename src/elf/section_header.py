@@ -46,6 +46,13 @@ class SectionHeader(ABC):
     ]
     # fmt: on
 
+    _SHT_SUNW_MOVE = 0x6FFFFFFA
+    _SHT_SUNW_COMDAT = 0x6FFFFFFB
+    _SHT_SUNW_SYMINFO = 0x6FFFFFFC
+    _SHT_SUNW_VERDEF = 0x6FFFFFFD
+    _SHT_SUNW_VERNEED = 0x6FFFFFFE
+    _SHT_SUNW_VERSYM = 0x6FFFFFFF
+
     _SHT_LOOS = 0x60000000
     _SHT_HIOS = 0x6FFFFFFF
     _SHT_LOPROC = 0x70000000
@@ -140,10 +147,13 @@ class RawSectionHeader(SectionHeader):
             "Section Header:\n"
             f"  Type: {fields['sh_type']}\n"
             f"  Flags: {hex(fields['sh_flags'])}\n"
-            f"  Addr: 0x{fields['sh_addr']:x}\n"
+            f"  Address: 0x{fields['sh_addr']:x}\n"
             f"  Offset: {fields['sh_offset']}\n"
-            f"  Size: {fields['sh_size']} bytes\n"
-            f"  Align: {fields['sh_addralign']}\n"
+            f"  Section size: {fields['sh_size']} bytes\n"
+            f"  Link: {fields['sh_link']}\n"
+            f"  Info: {fields['sh_info']}\n"
+            f"  Address alignment: {fields['sh_addralign']}\n"
+            f"  Section entry size: {fields['sh_entsize']}\n"
         )
 
 
@@ -166,22 +176,31 @@ class RawSectionHeaders(SectionHeaders):
 
 
 class ValidatedSectionHeader(SectionHeader):
-    def __init__(self, origin: SectionHeader):
+    def __init__(
+        self,
+        origin: SectionHeader,
+        section_headers: SectionHeaders,
+    ):
         self.__origin = origin
+        self.__section_headers = section_headers
 
     def fields(self) -> dict:
         fields = self.__origin.fields()
-        self.__validate(fields)
+        self.__validate(fields, self.__section_headers)
         return fields
 
     def change(self, fields: dict) -> None:
-        self.__validate(fields)
+        self.__validate(fields, self.__section_headers)
         self.__origin.change(fields)
 
     def __str__(self) -> str:
         return self.__origin.__str__()
 
-    def __validate(self, fields: dict) -> None:
+    def __validate(
+        self,
+        fields: dict,
+        section_headers: SectionHeaders,
+    ) -> None:
         for field, value in fields.items():
             match field:
                 case "sh_type":
@@ -198,6 +217,19 @@ class ValidatedSectionHeader(SectionHeader):
                         continue
                 case "sh_addr":
                     if self.__is_sh_addr_aligned(value, fields):
+                        continue
+                case "sh_link":
+                    if self.__is_sh_link_valid(
+                        value,
+                        fields,
+                        section_headers.all(),
+                    ):
+                        continue
+                case "sh_info":
+                    if self.__is_sh_info_valid(value, fields):
+                        continue
+                case "sh_entsize":
+                    if self.__is_sh_entsize_valid(value, fields):
                         continue
                 case _:
                     self.__validate_field_exists(field, self._FIELDS)
@@ -225,6 +257,74 @@ class ValidatedSectionHeader(SectionHeader):
             )
         return True
 
+    def __is_sh_link_valid(
+        self,
+        index: int,
+        fields: dict,
+        section_headers: list[SectionHeader],
+    ) -> bool:
+        links = {
+            self._SHT_DYNAMIC: [self._SHT_STRTAB],
+            self._SHT_HASH: [self._SHT_DYNSYM],
+            self._SHT_REL: [self._SHT_SYMTAB, self._SHT_DYNSYM],
+            self._SHT_RELA: [self._SHT_SYMTAB, self._SHT_DYNSYM],
+            self._SHT_SYMTAB: [self._SHT_STRTAB],
+            self._SHT_DYNSYM: [self._SHT_STRTAB],
+            self._SHT_GROUP: [self._SHT_SYMTAB, self._SHT_DYNSYM],
+            self._SHT_SYMTAB_SHNDX: [self._SHT_SYMTAB],
+            self._SHT_SUNW_COMDAT: [0],
+            self._SHT_SUNW_SYMINFO: [self._SHT_DYNSYM],
+            self._SHT_SUNW_VERDEF: [self._SHT_STRTAB],
+            self._SHT_SUNW_VERNEED: [self._SHT_STRTAB],
+            self._SHT_SUNW_VERSYM: [self._SHT_DYNSYM],
+        }
+        if index < 0 or index >= len(section_headers):
+            return False
+        if types := links.get(fields["sh_type"]):
+            return section_headers[index].fields()["sh_type"] in types
+        return True
+
+    def __is_sh_info_valid(
+        self,
+        value: int,
+        fields: dict,
+    ) -> bool:
+        return (
+            value == 0
+            if fields["sh_type"]
+            in [
+                self._SHT_DYNAMIC,
+                self._SHT_HASH,
+                self._SHT_SYMTAB_SHNDX,
+                self._SHT_SUNW_MOVE,
+                self._SHT_SUNW_COMDAT,
+                self._SHT_SUNW_VERSYM,
+            ]
+            else True
+        )
+
+    def __is_sh_entsize_valid(
+        self,
+        value: int,
+        fields: dict,
+    ) -> bool:
+        return (
+            value > 0
+            if fields["sh_type"]
+            in [
+                self._SHT_SYMTAB,
+                self._SHT_DYNSYM,
+                self._SHT_RELA,
+                self._SHT_REL,
+                self._SHT_DYNAMIC,
+                self._SHT_HASH,
+                self._SHT_SYMTAB_SHNDX,
+                self._SHT_SUNW_SYMINFO,
+                self._SHT_SUNW_VERSYM,
+            ]
+            else True
+        )
+
     def __validate_field_exists(self, field: str, fields: list):
         if field not in fields:
             raise ValueError(f"Unknown field {field}")
@@ -235,6 +335,8 @@ class ValidatedSectionHeaders(SectionHeaders):
         self.__origin = origin
 
     def all(self) -> list[SectionHeader]:
+        section_headers = self.__origin.all()
         return [
-            ValidatedSectionHeader(section) for section in self.__origin.all()
+            ValidatedSectionHeader(section, self.__origin)
+            for section in section_headers
         ]

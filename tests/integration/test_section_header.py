@@ -121,6 +121,7 @@ def test_string_representation(
 ):
     expected_string = (
         "Section Header:\n"
+        "  Name: 27 (index in .shstrtab)\n"
         "  Type: 1\n"
         "  Flags: 0x2\n"
         "  Address: 0x318\n"
@@ -161,6 +162,7 @@ def test_string_representation_on_stripped_binary(
 ):
     expected_string = (
         "Section Header:\n"
+        "  Name: 11 (index in .shstrtab)\n"
         "  Type: 1\n"
         "  Flags: 0x2\n"
         "  Address: 0x318\n"

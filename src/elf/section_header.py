@@ -145,8 +145,9 @@ class RawSectionHeader(SectionHeader):
         fields = self.fields()
         return (
             "Section Header:\n"
+            f"  Name: {fields['sh_name']} (index in .shstrtab)\n"
             f"  Type: {fields['sh_type']}\n"
-            f"  Flags: {hex(fields['sh_flags'])}\n"
+            f"  Flags: 0x{fields['sh_flags']:x}\n"
             f"  Address: 0x{fields['sh_addr']:x}\n"
             f"  Offset: {fields['sh_offset']}\n"
             f"  Section size: {fields['sh_size']} bytes\n"

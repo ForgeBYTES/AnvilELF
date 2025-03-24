@@ -225,6 +225,9 @@ class ValidatedSectionHeader(SectionHeader):
                         section_headers.all(),
                     ):
                         continue
+                case "sh_info":
+                    if self.__is_sh_info_valid(value, fields):
+                        continue
                 case _:
                     self.__validate_field_exists(field, self._FIELDS)
                     continue
@@ -276,6 +279,22 @@ class ValidatedSectionHeader(SectionHeader):
             return False
         if types := links.get(fields["sh_type"]):
             return section_headers[index].fields()["sh_type"] in types
+        return True
+
+    def __is_sh_info_valid(
+        self,
+        value: int,
+        fields: dict,
+    ) -> bool:
+        if fields["sh_type"] in [
+            self._SHT_DYNAMIC,
+            self._SHT_HASH,
+            self._SHT_SYMTAB_SHNDX,
+            self._SHT_SUNW_MOVE,
+            self._SHT_SUNW_COMDAT,
+            self._SHT_SUNW_VERSYM,
+        ]:
+            return value == 0
         return True
 
     def __validate_field_exists(self, field: str, fields: list):

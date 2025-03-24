@@ -11,6 +11,11 @@ from src.elf.section_header import (
 
 
 @pytest.fixture
+def expected_offset():
+    return 64
+
+
+@pytest.fixture
 def expected_data():
     return {
         "sh_name": 27,
@@ -48,12 +53,12 @@ def raw_data(request) -> bytearray:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_returning_fields(raw_data, expected_data, _class):
+def test_returning_fields(raw_data, expected_offset, expected_data, _class):
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     fields = _class(
         raw_data=raw_data,
-        offset=offset + 64,
+        offset=offset + expected_offset,
     ).fields()
 
     assert fields == expected_data
@@ -75,7 +80,7 @@ def test_returning_fields(raw_data, expected_data, _class):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_changing_fields(raw_data, expected_data, _class):
+def test_changing_fields(raw_data, expected_offset, expected_data, _class):
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     original_sh_flags = 2
@@ -83,7 +88,7 @@ def test_changing_fields(raw_data, expected_data, _class):
 
     section_header = _class(
         raw_data=raw_data,
-        offset=offset + 64,
+        offset=offset + expected_offset,
     )
 
     assert section_header.fields()["sh_flags"] == original_sh_flags
@@ -111,7 +116,9 @@ def test_changing_fields(raw_data, expected_data, _class):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_string_representation(raw_data, expected_data, _class):
+def test_string_representation(
+    raw_data, expected_offset, expected_data, _class
+):
     expected_string = (
         "Section Header:\n"
         "  Type: 1\n"
@@ -128,7 +135,8 @@ def test_string_representation(raw_data, expected_data, _class):
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     assert (
-        str(_class(raw_data=raw_data, offset=offset + 64)) == expected_string
+        str(_class(raw_data=raw_data, offset=offset + expected_offset))
+        == expected_string
     )
 
 
@@ -149,7 +157,7 @@ def test_string_representation(raw_data, expected_data, _class):
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
 def test_string_representation_on_stripped_binary(
-    raw_data, expected_data, _class
+    raw_data, expected_offset, expected_data, _class
 ):
     expected_string = (
         "Section Header:\n"
@@ -167,7 +175,8 @@ def test_string_representation_on_stripped_binary(
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     assert (
-        str(_class(raw_data=raw_data, offset=offset + 64)) == expected_string
+        str(_class(raw_data=raw_data, offset=offset + expected_offset))
+        == expected_string
     )
 
 
@@ -175,7 +184,7 @@ def test_string_representation_on_stripped_binary(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_fields_with_missing_key_in_expected_data(
-    raw_data, expected_data
+    raw_data, expected_offset, expected_data
 ):
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
@@ -184,9 +193,9 @@ def test_raising_on_changing_fields_with_missing_key_in_expected_data(
     del expected_data["sh_addr"]
 
     with pytest.raises(ValueError, match="Unable to process data"):
-        RawSectionHeader(raw_data=raw_data, offset=offset + 64).change(
-            expected_data
-        )
+        RawSectionHeader(
+            raw_data=raw_data, offset=offset + expected_offset
+        ).change(expected_data)
 
 
 def test_raising_on_returning_fields_of_unprocessable_binary():
@@ -200,7 +209,7 @@ def test_raising_on_returning_fields_of_unprocessable_binary():
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_field_with_unprocessable_data_type(
-    raw_data, expected_data
+    raw_data, expected_offset, expected_data
 ):
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
@@ -209,7 +218,7 @@ def test_raising_on_changing_field_with_unprocessable_data_type(
     with pytest.raises(ValueError, match="Unable to process data"):
         RawSectionHeader(
             raw_data=raw_data,
-            offset=offset + 64,
+            offset=offset + expected_offset,
         ).change(expected_data)
 
 
@@ -243,7 +252,7 @@ def test_returning_all_section_headers(raw_data):
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_invalid_field_values(
-    raw_data, expected_data, field, value, error_message
+    raw_data, expected_offset, expected_data, field, value, error_message
 ):
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
@@ -251,7 +260,40 @@ def test_raising_on_changing_invalid_field_values(
 
     with pytest.raises(ValueError, match=error_message):
         ValidatedSectionHeader(
-            RawSectionHeader(raw_data=raw_data, offset=offset + 64),
+            RawSectionHeader(
+                raw_data=raw_data, offset=offset + expected_offset
+            ),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+        ).change(expected_data)
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_nonzero_sh_info_in_sht_dynamic(raw_data, expected_data):
+    expected_data = {
+        "sh_name": 253,
+        "sh_type": 6,
+        "sh_flags": 3,
+        "sh_addr": 15816,
+        "sh_offset": 11720,
+        "sh_size": 496,
+        "sh_link": 7,
+        "sh_info": 0,
+        "sh_addralign": 8,
+        "sh_entsize": 16,
+    }
+
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
+    sht_dynamic_index = 23
+
+    expected_data["sh_info"] = 18
+
+    with pytest.raises(ValueError, match="Invalid value for sh_info"):
+        ValidatedSectionHeader(
+            RawSectionHeader(
+                raw_data=raw_data, offset=offset + (sht_dynamic_index * 64)
+            ),
             RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
         ).change(expected_data)
 
@@ -271,6 +313,7 @@ def test_raising_on_changing_invalid_field_values(
 )
 def test_changing_sh_addr_alignment(
     raw_data,
+    expected_offset,
     expected_data,
     sh_flags,
     sh_addr,
@@ -280,7 +323,7 @@ def test_changing_sh_addr_alignment(
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     section_header = ValidatedSectionHeader(
-        RawSectionHeader(raw_data=raw_data, offset=offset + 64),
+        RawSectionHeader(raw_data=raw_data, offset=offset + expected_offset),
         RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
     )
 

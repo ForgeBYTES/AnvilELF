@@ -228,6 +228,9 @@ class ValidatedSectionHeader(SectionHeader):
                 case "sh_info":
                     if self.__is_sh_info_valid(value, fields):
                         continue
+                case "sh_entsize":
+                    if self.__is_sh_entsize_valid(value, fields):
+                        continue
                 case _:
                     self.__validate_field_exists(field, self._FIELDS)
                     continue
@@ -286,16 +289,41 @@ class ValidatedSectionHeader(SectionHeader):
         value: int,
         fields: dict,
     ) -> bool:
-        if fields["sh_type"] in [
-            self._SHT_DYNAMIC,
-            self._SHT_HASH,
-            self._SHT_SYMTAB_SHNDX,
-            self._SHT_SUNW_MOVE,
-            self._SHT_SUNW_COMDAT,
-            self._SHT_SUNW_VERSYM,
-        ]:
-            return value == 0
-        return True
+        return (
+            value == 0
+            if fields["sh_type"]
+            in [
+                self._SHT_DYNAMIC,
+                self._SHT_HASH,
+                self._SHT_SYMTAB_SHNDX,
+                self._SHT_SUNW_MOVE,
+                self._SHT_SUNW_COMDAT,
+                self._SHT_SUNW_VERSYM,
+            ]
+            else True
+        )
+
+    def __is_sh_entsize_valid(
+        self,
+        value: int,
+        fields: dict,
+    ) -> bool:
+        return (
+            value > 0
+            if fields["sh_type"]
+            in [
+                self._SHT_SYMTAB,
+                self._SHT_DYNSYM,
+                self._SHT_RELA,
+                self._SHT_REL,
+                self._SHT_DYNAMIC,
+                self._SHT_HASH,
+                self._SHT_SYMTAB_SHNDX,
+                self._SHT_SUNW_SYMINFO,
+                self._SHT_SUNW_VERSYM,
+            ]
+            else True
+        )
 
     def __validate_field_exists(self, field: str, fields: list):
         if field not in fields:

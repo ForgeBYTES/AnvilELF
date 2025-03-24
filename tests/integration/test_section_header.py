@@ -299,6 +299,37 @@ def test_raising_on_nonzero_sh_info_in_sht_dynamic(raw_data, expected_data):
 
 
 @pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_zero_sh_entsize_in_sht_dynamic(raw_data, expected_data):
+    expected_data = {
+        "sh_name": 253,
+        "sh_type": 6,
+        "sh_flags": 3,
+        "sh_addr": 15816,
+        "sh_offset": 11720,
+        "sh_size": 496,
+        "sh_link": 7,
+        "sh_info": 0,
+        "sh_addralign": 8,
+        "sh_entsize": 16,
+    }
+
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
+    sht_dynamic_index = 23
+
+    expected_data["sh_entsize"] = 0
+
+    with pytest.raises(ValueError, match="Invalid value for sh_entsize"):
+        ValidatedSectionHeader(
+            RawSectionHeader(
+                raw_data=raw_data, offset=offset + (sht_dynamic_index * 64)
+            ),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+        ).change(expected_data)
+
+
+@pytest.mark.parametrize(
     "sh_flags, sh_addr, sh_addralign, should_pass",
     [
         (0x2, 0x1000, 8, True),

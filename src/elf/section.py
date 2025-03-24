@@ -70,7 +70,7 @@ class RawSection(Section):
         )
 
 
-class RawSections(ABC):
+class RawSections(Sections):
     def __init__(
         self,
         raw_data: bytearray,
@@ -81,7 +81,7 @@ class RawSections(ABC):
         self.__section_headers = section_headers
         self.__executable_header = executable_header
 
-    def all(self) -> list[RawSection]:
+    def all(self) -> list[Section]:
         section_headers = self.__section_headers.all()
         string_table = RawSection(
             self.__raw_data,

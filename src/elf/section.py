@@ -57,7 +57,7 @@ class RawSection(Section):
         data = self.data()[:32]
         return (
             "Section:\n"
-            f"  Section: {self.name()}\n"
+            f"  Name: {self.name()}\n"
             f"  Offset: 0x{fields['sh_offset']:08x}\n"
             f"  Size: 0x{fields['sh_size']:08x} ({fields['sh_size']} bytes)\n"
             f"  Data: {self.__hex_dump(data)} ...\n"

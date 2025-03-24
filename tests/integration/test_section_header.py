@@ -40,7 +40,8 @@ def raw_data(request) -> bytearray:
             RawSectionHeader(
                 raw_data=raw_data,
                 offset=offset,
-            )
+            ),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
         ),
     ],
 )
@@ -66,7 +67,8 @@ def test_returning_fields(raw_data, expected_data, _class):
             RawSectionHeader(
                 raw_data=raw_data,
                 offset=offset,
-            )
+            ),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
         ),
     ],
 )
@@ -101,7 +103,8 @@ def test_changing_fields(raw_data, expected_data, _class):
             RawSectionHeader(
                 raw_data=raw_data,
                 offset=offset,
-            )
+            ),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
         ),
     ],
 )
@@ -113,10 +116,13 @@ def test_string_representation(raw_data, expected_data, _class):
         "Section Header:\n"
         "  Type: 1\n"
         "  Flags: 0x2\n"
-        "  Addr: 0x318\n"
+        "  Address: 0x318\n"
         "  Offset: 792\n"
-        "  Size: 28 bytes\n"
-        "  Align: 1\n"
+        "  Section size: 28 bytes\n"
+        "  Link: 0\n"
+        "  Info: 0\n"
+        "  Address alignment: 1\n"
+        "  Section entry size: 0\n"
     )
 
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
@@ -134,7 +140,8 @@ def test_string_representation(raw_data, expected_data, _class):
             RawSectionHeader(
                 raw_data=raw_data,
                 offset=offset,
-            )
+            ),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
         ),
     ],
 )
@@ -148,10 +155,13 @@ def test_string_representation_on_stripped_binary(
         "Section Header:\n"
         "  Type: 1\n"
         "  Flags: 0x2\n"
-        "  Addr: 0x318\n"
+        "  Address: 0x318\n"
         "  Offset: 792\n"
-        "  Size: 28 bytes\n"
-        "  Align: 1\n"
+        "  Section size: 28 bytes\n"
+        "  Link: 0\n"
+        "  Info: 0\n"
+        "  Address alignment: 1\n"
+        "  Section entry size: 0\n"
     )
 
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
@@ -225,6 +235,7 @@ def test_returning_all_section_headers(raw_data):
         ("sh_addralign", 3, "Invalid value for sh_addralign"),
         ("sh_size", -1, "Invalid value for sh_size"),
         ("sh_offset", -1, "Invalid value for sh_offset"),
+        ("sh_link", -1, "Invalid value for sh_link"),
         ("invalid", 2, "Unknown field invalid"),
     ],
 )
@@ -240,7 +251,8 @@ def test_raising_on_changing_invalid_field_values(
 
     with pytest.raises(ValueError, match=error_message):
         ValidatedSectionHeader(
-            RawSectionHeader(raw_data=raw_data, offset=offset + 64)
+            RawSectionHeader(raw_data=raw_data, offset=offset + 64),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
         ).change(expected_data)
 
 
@@ -268,7 +280,8 @@ def test_changing_sh_addr_alignment(
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
 
     section_header = ValidatedSectionHeader(
-        RawSectionHeader(raw_data=raw_data, offset=offset + 64)
+        RawSectionHeader(raw_data=raw_data, offset=offset + 64),
+        RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
     )
 
     expected_data["sh_flags"] = sh_flags
@@ -301,10 +314,13 @@ def test_returning_all_validated_section_headers_and_their_fields(raw_data):
 
     executable_header = RawExecutableHeader(raw_data)
     section_headers = ValidatedSectionHeaders(
-        RawSectionHeaders(raw_data, executable_header)
+        RawSectionHeaders(raw_data, executable_header),
     ).all()
 
-    assert len(section_headers) == executable_header.fields()["e_shnum"]
+    for section_header in section_headers:
+        print(section_header)
+
+        assert len(section_headers) == executable_header.fields()["e_shnum"]
     assert all(
         isinstance(section_header, ValidatedSectionHeader)
         for section_header in section_headers

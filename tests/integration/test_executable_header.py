@@ -117,7 +117,7 @@ def test_string_representation(raw_data, _class):
         "  Type: 3\n"
         "  Machine: 62\n"
         "  Entry point: 0x1260\n"
-        "  Start of section headers: 19232\n"
+        "  Start of section headers: 0x4b20\n"
         "  Number of section headers: 39\n"
     )
     assert str(_class(raw_data)) == expected_string
@@ -147,7 +147,7 @@ def test_string_representation_on_stripped_binary(raw_data, _class):
         "  Type: 3\n"
         "  Machine: 62\n"
         "  Entry point: 0x1260\n"
-        "  Start of section headers: 12616\n"
+        "  Start of section headers: 0x3148\n"
         "  Number of section headers: 29\n"
     )
     assert str(_class(raw_data)) == expected_string

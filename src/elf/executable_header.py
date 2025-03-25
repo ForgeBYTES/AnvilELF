@@ -128,7 +128,7 @@ class RawExecutableHeader(ExecutableHeader):
             f"  Type: {fields['e_type']}\n"
             f"  Machine: {fields['e_machine']}\n"
             f"  Entry point: 0x{fields['e_entry']:x}\n"
-            f"  Start of section headers: {fields['e_shoff']}\n"
+            f"  Start of section headers: 0x{fields['e_shoff']:x}\n"
             f"  Number of section headers: {fields['e_shnum']}\n"
         )
 

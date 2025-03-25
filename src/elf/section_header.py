@@ -149,7 +149,7 @@ class RawSectionHeader(SectionHeader):
             f"  Type: {fields['sh_type']}\n"
             f"  Flags: 0x{fields['sh_flags']:x}\n"
             f"  Address: 0x{fields['sh_addr']:x}\n"
-            f"  Offset: {fields['sh_offset']}\n"
+            f"  Offset: 0x{fields['sh_offset']:x}\n"
             f"  Section size: {fields['sh_size']} bytes\n"
             f"  Link: {fields['sh_link']}\n"
             f"  Info: {fields['sh_info']}\n"

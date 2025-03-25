@@ -6,12 +6,12 @@ from src.elf.section_header import SectionHeader, SectionHeaders
 
 class Section(ABC):
     @abstractmethod
-    def data(self) -> bytes:
-        pass  # pragma: no cover
+    def data(self) -> bytes:  # pragma: no cover
+        pass
 
     @abstractmethod
-    def name(self) -> str:
-        pass  # pragma: no cover
+    def name(self) -> str:  # pragma: no cover
+        pass
 
     @abstractmethod
     def __str__(self) -> str:  # pragma: no cover
@@ -20,8 +20,8 @@ class Section(ABC):
 
 class Sections(ABC):
     @abstractmethod
-    def all(self) -> list[Section]:
-        pass  # pragma: no cover
+    def all(self) -> list[Section]:  # pragma: no cover
+        pass
 
 
 class RawSection(Section):

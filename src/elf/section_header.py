@@ -336,8 +336,7 @@ class ValidatedSectionHeaders(SectionHeaders):
         self.__origin = origin
 
     def all(self) -> list[SectionHeader]:
-        section_headers = self.__origin.all()
         return [
             ValidatedSectionHeader(section, self.__origin)
-            for section in section_headers
+            for section in self.__origin.all()
         ]

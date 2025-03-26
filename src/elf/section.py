@@ -28,7 +28,7 @@ class Sections(ABC):
         pass
 
 
-class StringTable(Section):
+class Shstrtab(Section):
     @abstractmethod
     def name_by_index(self, sh_name: int) -> str:  # pragma: no cover
         pass
@@ -43,11 +43,11 @@ class RawSection(Section):
         self,
         raw_data: bytearray,
         header: SectionHeader,
-        string_table: StringTable | None = None,
+        shstrtab: Shstrtab | None = None,
     ):
         self.__raw_data = raw_data
         self.__section_header = header
-        self.__string_table = string_table
+        self.__shstrtab = shstrtab
 
     def data(self) -> bytes:
         fields = self.__section_header.fields()
@@ -57,10 +57,10 @@ class RawSection(Section):
         ]
 
     def name(self) -> str:
-        if self.__string_table is None:
+        if self.__shstrtab is None:
             return str(self.__section_header.fields()["sh_name"])
 
-        return self.__string_table.name_by_index(
+        return self.__shstrtab.name_by_index(
             self.__section_header.fields()["sh_name"]
         )
 
@@ -82,7 +82,7 @@ class RawSection(Section):
         )
 
 
-class RawStringTable(StringTable):
+class RawShstrtab(Shstrtab):
     def __init__(self, origin: Section):
         self.__origin = origin
 
@@ -93,18 +93,15 @@ class RawStringTable(StringTable):
         ].decode("ascii")
 
     def index_by_name(self, name: str) -> int:
-        data = self.__origin.data()
         needle = name.encode("ascii")
 
         offset = 0
-        while offset < len(data):
-            if (end := data.find(b"\x00", offset)) == -1:
-                break  # pragma: no cover
-            if data[offset:end] == needle:
+        for part in self.__origin.data().split(b"\x00"):
+            if part == needle:
                 return offset
-            offset = end + 1
+            offset += len(part) + 1
 
-        raise ValueError(f"Name '{name}' not found in string table")
+        raise ValueError(f"Section name '{name}' not found in .shstrtab")
 
     def data(self) -> bytes:
         return self.__origin.data()  # pragma: no cover
@@ -129,34 +126,33 @@ class RawSections(Sections):
 
     def all(self, name: str = "") -> list[Section]:
         section_headers = self.__section_headers.all()
-        string_table = self.__string_table(section_headers)
+        shstrtab = self.__shstrtab(section_headers)
+
         return [
-            RawSection(self.__raw_data, section_header, string_table)
+            RawSection(self.__raw_data, section_header, shstrtab)
             for section_header in section_headers
         ]
 
     def by_name(self, name: str) -> Section:
         section_headers = self.__section_headers.all()
-        string_table = self.__string_table(section_headers)
+        shstrtab = self.__shstrtab(section_headers)
 
         match name:
             case ".shstrtab":
-                return string_table
+                return shstrtab
             case _:
-                sh_name = string_table.index_by_name(name)
+                sh_name = shstrtab.index_by_name(name)
 
                 for section_header in section_headers:
                     if section_header.fields()["sh_name"] == sh_name:
                         return RawSection(
-                            self.__raw_data, section_header, string_table
+                            self.__raw_data, section_header, shstrtab
                         )
 
         raise ValueError(f"Section '{name}' not found")  # pragma: no cover
 
-    def __string_table(
-        self, section_headers: list[SectionHeader]
-    ) -> StringTable:
-        return RawStringTable(
+    def __shstrtab(self, section_headers: list[SectionHeader]) -> Shstrtab:
+        return RawShstrtab(
             RawSection(
                 self.__raw_data,
                 section_headers[

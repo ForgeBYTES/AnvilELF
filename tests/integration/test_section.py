@@ -1,7 +1,7 @@
 import pytest
 
 from src.elf.executable_header import RawExecutableHeader
-from src.elf.section import RawSection, RawSections, RawStringTable
+from src.elf.section import RawSection, RawSections, RawShstrtab
 from src.elf.section_header import RawSectionHeader, RawSectionHeaders
 
 
@@ -56,7 +56,7 @@ def test_returning_sections_by_name(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_returning_name_offset_if_string_table_is_not_present(raw_data):
+def test_returning_name_offset_if_shstrtab_is_not_present(raw_data):
     expected_string_offset = "27"
 
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
@@ -140,33 +140,33 @@ def test_string_representation_on_stripped_binary(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_returning_string_table_name_by_index_and_vice_versa(raw_data):
+def test_returning_shstrtab_name_by_index_and_vice_versa(raw_data):
     executable_header = RawExecutableHeader(raw_data)
     section_headers = RawSectionHeaders(raw_data, executable_header)
 
-    string_table = RawStringTable(
+    shstrtab = RawShstrtab(
         RawSection(
             raw_data,
             section_headers.all()[executable_header.fields()["e_shstrndx"]],
         )
     )
-    assert string_table.index_by_name(".shstrtab") == 17
-    assert string_table.name_by_index(17) == ".shstrtab"
+    assert shstrtab.index_by_name(".shstrtab") == 17
+    assert shstrtab.name_by_index(17) == ".shstrtab"
 
 
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_returning_string_table_index_with_nonexistent_name(
+def test_raising_on_returning_shstrtab_index_with_nonexistent_name(
     raw_data,
 ):
     executable_header = RawExecutableHeader(raw_data)
     section_headers = RawSectionHeaders(raw_data, executable_header)
 
     with pytest.raises(
-        ValueError, match="Name '.nonexistent' not found in string table"
+        ValueError, match="Section name '.nonexistent' not found in .shstrtab"
     ):
-        string_table = RawStringTable(
+        shstrtab = RawShstrtab(
             RawSection(
                 raw_data,
                 section_headers.all()[
@@ -174,4 +174,4 @@ def test_raising_on_returning_string_table_index_with_nonexistent_name(
                 ],
             )
         )
-        string_table.index_by_name(".nonexistent")
+        shstrtab.index_by_name(".nonexistent")

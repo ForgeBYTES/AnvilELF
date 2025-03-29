@@ -14,8 +14,8 @@ from src.elf.section_header import RawSectionHeader, RawSectionHeaders
 
 @pytest.fixture
 def raw_data(request) -> bytearray:
-    with open(request.param, "rb") as f:
-        return bytearray(f.read())
+    with open(request.param, "rb") as binary:
+        return bytearray(binary.read())
 
 
 @pytest.mark.parametrize(

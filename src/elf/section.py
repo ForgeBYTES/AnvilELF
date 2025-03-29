@@ -129,7 +129,7 @@ class RawShstrtabSection(Section, Shstrtab):
         return self.__origin.__str__()  # pragma: no cover
 
 
-class RawTextSection(Section):
+class RawTextSection(Section, Text):
     def __init__(self, origin: Section):
         self.__origin = origin
         self.__cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)

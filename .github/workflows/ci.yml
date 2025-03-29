@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -24,21 +24,21 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y gcc
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Run Code Quality Checks
+      - name: Run code quality checks
         run: |
           python -m isort --check-only --split-on-trailing-comma --diff src
           python -m black --line-length 79 --check src
           python -m flake8 src
-          python -m mypy --explicit-package-bases src
+          python -m mypy --explicit-package-bases --disable-error-code import-untyped src
 
-      - name: Run Tests with Coverage
+      - name: Run tests with coverage
         run: |
           pytest --cov=src --cov-report=xml --cov-report=term --cov-fail-under=90
 

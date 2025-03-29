@@ -1,7 +1,14 @@
+from typing import cast
+
 import pytest
 
 from src.elf.executable_header import RawExecutableHeader
-from src.elf.section import RawSection, RawSections, RawShstrtab
+from src.elf.section import (
+    RawSection,
+    RawSections,
+    RawShstrtabSection,
+    RawTextSection,
+)
 from src.elf.section_header import RawSectionHeader, RawSectionHeaders
 
 
@@ -144,7 +151,7 @@ def test_returning_shstrtab_name_by_index_and_vice_versa(raw_data):
     executable_header = RawExecutableHeader(raw_data)
     section_headers = RawSectionHeaders(raw_data, executable_header)
 
-    shstrtab = RawShstrtab(
+    shstrtab = RawShstrtabSection(
         RawSection(
             raw_data,
             section_headers.all()[executable_header.fields()["e_shstrndx"]],
@@ -152,6 +159,21 @@ def test_returning_shstrtab_name_by_index_and_vice_versa(raw_data):
     )
     assert shstrtab.index_by_name(".shstrtab") == 17
     assert shstrtab.name_by_index(17) == ".shstrtab"
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_returning_bss_section_by_name(raw_data):
+    executable_header = RawExecutableHeader(raw_data)
+
+    bss = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    ).by_name(".bss")
+
+    assert bss.name() == ".bss"
 
 
 @pytest.mark.parametrize(
@@ -166,7 +188,7 @@ def test_raising_on_returning_shstrtab_index_with_nonexistent_name(
     with pytest.raises(
         ValueError, match="Section name '.nonexistent' not found in .shstrtab"
     ):
-        shstrtab = RawShstrtab(
+        shstrtab = RawShstrtabSection(
             RawSection(
                 raw_data,
                 section_headers.all()[
@@ -175,3 +197,36 @@ def test_raising_on_returning_shstrtab_index_with_nonexistent_name(
             )
         )
         shstrtab.index_by_name(".nonexistent")
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_text_disassembly_string_representation(raw_data):
+    expected_output = (
+        "Disassembly:\n"
+        "  00001060: endbr64 \n"
+        "  00001064: xor ebp, ebp\n"
+        "  00001066: mov r9, rdx\n"
+        "  00001069: pop rsi\n"
+        "  0000106a: mov rdx, rsp\n"
+        "  0000106d: and rsp, 0xfffffffffffffff0\n"
+        "  00001071: push rax\n"
+        "  00001072: push rsp\n"
+        "  00001073: xor r8d, r8d\n"
+        "  00001076: xor ecx, ecx\n"
+        "  00001078: lea rdi, [rip + 0xca]\n"
+        "  0000107f: call qword ptr [rip + 0x2f53]\n"
+        "  00001085: hlt \n"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    text = cast(RawTextSection, sections.by_name(".text"))
+
+    assert str(text).startswith(expected_output)

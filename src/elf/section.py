@@ -200,14 +200,10 @@ class RawSections(Sections):
 
         raise ValueError(f"Section '{name}' not found")  # pragma: no cover
 
-    def __shstrtab(
-        self, section_headers: list[SectionHeader]
-    ) -> RawShstrtabSection:
+    def __shstrtab(self, headers: list[SectionHeader]) -> RawShstrtabSection:
         return RawShstrtabSection(
             RawSection(
                 self.__raw_data,
-                section_headers[
-                    self.__executable_header.fields()["e_shstrndx"]
-                ],
+                headers[self.__executable_header.fields()["e_shstrndx"]],
             )
         )

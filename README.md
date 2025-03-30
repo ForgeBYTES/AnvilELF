@@ -29,19 +29,19 @@ make install
 
 ## ⚡ Usage 
 
-### ✅ Code Quality & Testing 
+### ✅ Code quality & testing 
 To verify code formatting, linting, type safety, and run all tests, use:
 ```sh
 make check
 ```
 
-### 🛠️ Auto-fixing Code 
+### 🛠️ Auto-fixing code 
 To automatically format and fix code style issues, run:
 ```sh
 make fix
 ```
 
-### 🧹 Clean Up 
+### 🧹 Clean up 
 To remove the container and Docker image:
 ```sh
 make clean

@@ -63,6 +63,20 @@ def test_returning_sections_by_name(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
+def test_raising_on_returning_section_by_nonexistent_name(raw_data):
+    executable_header = RawExecutableHeader(raw_data)
+
+    with pytest.raises(ValueError, match="Section '.nonexistent' not found"):
+        assert RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, executable_header),
+            executable_header,
+        ).by_name(".nonexistent")
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 def test_returning_name_offset_if_shstrtab_is_not_present(raw_data):
     expected_string_offset = "27"
 

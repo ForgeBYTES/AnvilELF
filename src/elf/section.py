@@ -44,7 +44,7 @@ class Shstrtab(ABC):
         pass
 
 
-class Text(ABC):
+class Disassemblable(ABC):
     @abstractmethod
     def disassembly(self) -> list[str]:  # pragma: no cover
         pass
@@ -103,7 +103,7 @@ class RawShstrtabSection(Section, Shstrtab):
         return self.__origin.header_fields()  # pragma: no cover
 
     def name_by_index(self, sh_name: int) -> str:
-        data = self.__origin.data()
+        data = self.data()
         return data[
             sh_name : data.find(b"\x00", sh_name)  # noqa: E203
         ].decode("ascii")
@@ -112,7 +112,7 @@ class RawShstrtabSection(Section, Shstrtab):
         needle = name.encode("ascii")
 
         offset = 0
-        for part in self.__origin.data().split(b"\x00"):
+        for part in self.data().split(b"\x00"):
             if part == needle:
                 return offset
             offset += len(part) + 1
@@ -120,16 +120,16 @@ class RawShstrtabSection(Section, Shstrtab):
         raise ValueError(f"Section name '{name}' not found in .shstrtab")
 
     def data(self) -> bytes:
-        return self.__origin.data()  # pragma: no cover
+        return self.__origin.data()
 
     def name(self) -> str:
         return ".shstrtab"
 
     def __str__(self) -> str:
-        return self.__origin.__str__()  # pragma: no cover
+        return str(self.__origin)  # pragma: no cover
 
 
-class RawTextSection(Section, Text):
+class RawTextSection(Section, Disassemblable):
     def __init__(self, origin: Section):
         self.__origin = origin
         self.__cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
@@ -176,34 +176,42 @@ class RawSections(Sections):
 
     def all(self) -> list[Section]:
         headers = self.__section_headers.all()
-        shstrtab = self.__shstrtab(headers)
-
-        return [
-            RawSection(self.__raw_data, header, shstrtab) for header in headers
-        ]
-
-    def by_name(self, name: str) -> Section:
-        headers = self.__section_headers.all()
-        shstrtab = self.__shstrtab(headers)
-
-        for header in headers:
-            if header.fields()["sh_name"] == shstrtab.index_by_name(name):
-                match name:
-                    case ".shstrtab":
-                        return shstrtab
-                    case ".text":
-                        return RawTextSection(
-                            RawSection(self.__raw_data, header, shstrtab)
-                        )
-                    case _:
-                        return RawSection(self.__raw_data, header, shstrtab)
-
-        raise ValueError(f"Section '{name}' not found")  # pragma: no cover
-
-    def __shstrtab(self, headers: list[SectionHeader]) -> RawShstrtabSection:
-        return RawShstrtabSection(
+        shstrtab = RawShstrtabSection(
             RawSection(
                 self.__raw_data,
                 headers[self.__executable_header.fields()["e_shstrndx"]],
             )
         )
+        return [
+            self.__section(
+                shstrtab.name_by_index(header.fields()["sh_name"]),
+                header,
+                shstrtab,
+            )
+            for header in headers
+        ]
+
+    def by_name(self, name: str) -> Section:
+        for section in self.all():
+            if section.name() == name:
+                return section
+        raise ValueError(f"Section '{name}' not found")
+
+    def __section(
+        self, name: str, header: SectionHeader, shstrtab: RawShstrtabSection
+    ) -> Section:
+        match name:
+            case ".shstrtab":
+                return RawShstrtabSection(
+                    RawSection(
+                        self.__raw_data,
+                        header,
+                        shstrtab,
+                    )
+                )
+            case ".text":
+                return RawTextSection(
+                    RawSection(self.__raw_data, header, shstrtab)
+                )
+            case _:
+                return RawSection(self.__raw_data, header, shstrtab)

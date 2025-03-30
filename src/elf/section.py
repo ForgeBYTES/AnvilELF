@@ -126,7 +126,7 @@ class RawShstrtabSection(Section, Shstrtab):
         return ".shstrtab"
 
     def __str__(self) -> str:
-        return str(self.__origin)  # pragma: no cover
+        return str(self.__origin)
 
 
 class RawTextSection(Section, Disassemblable):

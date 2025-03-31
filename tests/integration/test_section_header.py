@@ -128,7 +128,7 @@ def test_string_representation(raw_data, expected_offset, _class):
         "  Link: 0\n"
         "  Info: 0\n"
         "  Address alignment: 1\n"
-        "  Section entry size: 0\n"
+        "  Section entry size: 0"
     )
 
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
@@ -169,7 +169,7 @@ def test_string_representation_on_stripped_binary(
         "  Link: 0\n"
         "  Info: 0\n"
         "  Address alignment: 1\n"
-        "  Section entry size: 0\n"
+        "  Section entry size: 0"
     )
 
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]

@@ -154,7 +154,7 @@ class RawSectionHeader(SectionHeader):
             f"  Link: {fields['sh_link']}\n"
             f"  Info: {fields['sh_info']}\n"
             f"  Address alignment: {fields['sh_addralign']}\n"
-            f"  Section entry size: {fields['sh_entsize']}\n"
+            f"  Section entry size: {fields['sh_entsize']}"
         )
 
 

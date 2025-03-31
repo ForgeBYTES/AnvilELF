@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Iterator
 
 import capstone
 
@@ -80,7 +81,7 @@ class RawSection(Section):
     def __str__(self) -> str:
         data = self.data()[:32]
         return str(self.__section_header) + (
-            "Section:\n"
+            "\nSection:\n"
             f"  Name: {self.name()}\n"
             f"  Data: {self.__hex_dump(data)} ...\n"
             f"  ASCII: {self.__ascii_dump(data)} ...\n"
@@ -99,9 +100,6 @@ class RawShstrtabSection(Section, Shstrtab):
     def __init__(self, origin: Section):
         self.__origin = origin
 
-    def header_fields(self) -> dict:
-        return self.__origin.header_fields()  # pragma: no cover
-
     def name_by_index(self, sh_name: int) -> str:
         data = self.data()
         return data[
@@ -109,15 +107,13 @@ class RawShstrtabSection(Section, Shstrtab):
         ].decode("ascii")
 
     def index_by_name(self, name: str) -> int:
-        needle = name.encode("ascii")
-
-        offset = 0
-        for part in self.data().split(b"\x00"):
-            if part == needle:
+        for offset, entry in self.__table():
+            if name == entry:
                 return offset
-            offset += len(part) + 1
-
         raise ValueError(f"Section name '{name}' not found in .shstrtab")
+
+    def header_fields(self) -> dict:
+        return self.__origin.header_fields()  # pragma: no cover
 
     def data(self) -> bytes:
         return self.__origin.data()
@@ -126,7 +122,17 @@ class RawShstrtabSection(Section, Shstrtab):
         return ".shstrtab"
 
     def __str__(self) -> str:
-        return str(self.__origin)
+        names = "\n".join(
+            f"  [0x{offset:02x}] {entry}" for offset, entry in self.__table()
+        )
+        return str(self.__origin) + f"Section header table:\n{names}"
+
+    def __table(self) -> Iterator[tuple[int, str]]:
+        offset = 0
+        for entry in self.data().split(b"\x00"):
+            if entry:
+                yield offset, entry.decode("ascii")
+            offset += len(entry) + 1
 
 
 class RawTextSection(Section, Disassemblable):
@@ -160,7 +166,7 @@ class RawTextSection(Section, Disassemblable):
         instructions = "\n".join(
             [f"  {instruction}" for instruction in self.disassembly()]
         )
-        return f"Disassembly:\n{instructions}"
+        return str(self.__origin) + f"Disassembly:\n{instructions}"
 
 
 class RawSections(Sections):

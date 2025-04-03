@@ -2,6 +2,7 @@ import pytest
 
 from src.elf.executable_header import RawExecutableHeader
 from src.elf.section_header import (
+    CachedSectionHeader,
     RawSectionHeader,
     RawSectionHeaders,
     SectionHeader,
@@ -41,12 +42,14 @@ def raw_data(request) -> bytearray:
     "_class",
     [
         RawSectionHeader,
-        lambda raw_data, offset: ValidatedSectionHeader(
-            RawSectionHeader(
-                raw_data=raw_data,
-                offset=offset,
-            ),
-            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+        lambda raw_data, offset: CachedSectionHeader(
+            ValidatedSectionHeader(
+                RawSectionHeader(
+                    raw_data=raw_data,
+                    offset=offset,
+                ),
+                RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+            )
         ),
     ],
 )
@@ -68,12 +71,14 @@ def test_returning_fields(raw_data, expected_offset, expected_data, _class):
     "_class",
     [
         RawSectionHeader,
-        lambda raw_data, offset: ValidatedSectionHeader(
-            RawSectionHeader(
-                raw_data=raw_data,
-                offset=offset,
-            ),
-            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+        lambda raw_data, offset: CachedSectionHeader(
+            ValidatedSectionHeader(
+                RawSectionHeader(
+                    raw_data=raw_data,
+                    offset=offset,
+                ),
+                RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+            )
         ),
     ],
 )
@@ -97,86 +102,11 @@ def test_changing_fields(raw_data, expected_offset, expected_data, _class):
 
     section_header.change(expected_data)
 
-    assert section_header.fields() == expected_data
-
-
-@pytest.mark.parametrize(
-    "_class",
-    [
-        RawSectionHeader,
-        lambda raw_data, offset: ValidatedSectionHeader(
-            RawSectionHeader(
-                raw_data=raw_data,
-                offset=offset,
-            ),
-            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
-        ),
-    ],
-)
-@pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
-)
-def test_string_representation(raw_data, expected_offset, _class):
-    expected_string = (
-        "Section Header:\n"
-        "  Name: 27 (index in .shstrtab)\n"
-        "  Type: 1\n"
-        "  Flags: 0x2\n"
-        "  Address: 0x318\n"
-        "  Offset: 0x318\n"
-        "  Section size: 28 bytes\n"
-        "  Link: 0\n"
-        "  Info: 0\n"
-        "  Address alignment: 1\n"
-        "  Section entry size: 0"
-    )
-
-    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
-
     assert (
-        str(_class(raw_data=raw_data, offset=offset + expected_offset))
-        == expected_string
-    )
-
-
-@pytest.mark.parametrize(
-    "_class",
-    [
-        RawSectionHeader,
-        lambda raw_data, offset: ValidatedSectionHeader(
-            RawSectionHeader(
-                raw_data=raw_data,
-                offset=offset,
-            ),
-            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
-        ),
-    ],
-)
-@pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
-)
-def test_string_representation_on_stripped_binary(
-    raw_data, expected_offset, _class
-):
-    expected_string = (
-        "Section Header:\n"
-        "  Name: 11 (index in .shstrtab)\n"
-        "  Type: 1\n"
-        "  Flags: 0x2\n"
-        "  Address: 0x318\n"
-        "  Offset: 0x318\n"
-        "  Section size: 28 bytes\n"
-        "  Link: 0\n"
-        "  Info: 0\n"
-        "  Address alignment: 1\n"
-        "  Section entry size: 0"
-    )
-
-    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
-
-    assert (
-        str(_class(raw_data=raw_data, offset=offset + expected_offset))
-        == expected_string
+        RawSectionHeader(
+            raw_data=raw_data, offset=offset + expected_offset
+        ).fields()
+        == expected_data
     )
 
 

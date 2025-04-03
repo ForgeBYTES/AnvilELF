@@ -1,5 +1,6 @@
 import struct
 from abc import ABC, abstractmethod
+from functools import cached_property
 
 
 class ExecutableHeader(ABC):
@@ -49,16 +50,12 @@ class ExecutableHeader(ABC):
     _TYPES = [_ET_REL, _ET_EXEC, _ET_DYN, _ET_CORE]
 
     @abstractmethod
-    def fields(self) -> dict:  # pragma: no cover
-        pass
+    def fields(self) -> dict:
+        pass  # pragma: no cover
 
     @abstractmethod
-    def change(self, fields: dict) -> None:  # pragma: no cover
-        pass
-
-    @abstractmethod
-    def __str__(self) -> str:  # pragma: no cover
-        pass
+    def change(self, fields: dict) -> None:
+        pass  # pragma: no cover
 
 
 class RawExecutableHeader(ExecutableHeader):
@@ -115,26 +112,6 @@ class RawExecutableHeader(ExecutableHeader):
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")
 
-    def __str__(self) -> str:
-        fields = self.fields()
-        return (
-            "Executable Header:\n"
-            f"  Magic: {self.__magic(fields)}\n"
-            f"  Class: {fields['e_ident']['EI_CLASS']}\n"
-            f"  Data: {fields['e_ident']['EI_DATA']}\n"
-            f"  Version: {fields['e_ident']['EI_VERSION']}\n"
-            f"  OS/ABI: {fields['e_ident']['EI_OSABI']}\n"
-            f"  ABI Version: {fields['e_ident']['EI_ABIVERSION']}\n"
-            f"  Type: {fields['e_type']}\n"
-            f"  Machine: {fields['e_machine']}\n"
-            f"  Entry point: 0x{fields['e_entry']:x}\n"
-            f"  Start of section headers: 0x{fields['e_shoff']:x}\n"
-            f"  Number of section headers: {fields['e_shnum']}"
-        )
-
-    def __magic(self, fields: dict) -> str:
-        return " ".join(f"{byte:02x}" for byte in fields["e_ident"]["EI_MAG"])
-
 
 class ValidatedExecutableHeader(ExecutableHeader):
     def __init__(self, origin: ExecutableHeader):
@@ -148,9 +125,6 @@ class ValidatedExecutableHeader(ExecutableHeader):
     def change(self, fields: dict) -> None:
         self.__validate(fields)
         return self.__origin.change(fields)
-
-    def __str__(self) -> str:
-        return self.__origin.__str__()
 
     def __validate_all(self, fields: dict) -> None:
         if not self.__is_64_bit(fields):
@@ -223,3 +197,18 @@ class ValidatedExecutableHeader(ExecutableHeader):
     def __validate_field_exists(self, field: str, fields: list):
         if field not in fields:
             raise ValueError(f"Unknown field {field}")
+
+
+class CachedExecutableHeader(ExecutableHeader):
+    def __init__(self, origin: ExecutableHeader):
+        self.__origin = origin
+
+    def fields(self) -> dict:
+        return self.__cached_fields
+
+    def change(self, fields: dict) -> None:
+        self.__origin.change(fields)
+
+    @cached_property
+    def __cached_fields(self) -> dict:
+        return self.__origin.fields()

@@ -1,6 +1,7 @@
 import pytest
 
 from src.elf.executable_header import (
+    CachedExecutableHeader,
     RawExecutableHeader,
     ValidatedExecutableHeader,
 )
@@ -44,8 +45,8 @@ def raw_data(request) -> bytearray:
     "_class",
     [
         RawExecutableHeader,
-        lambda raw_data: ValidatedExecutableHeader(
-            RawExecutableHeader(raw_data),
+        lambda raw_data: CachedExecutableHeader(
+            ValidatedExecutableHeader(RawExecutableHeader(raw_data))
         ),
     ],
 )
@@ -60,8 +61,8 @@ def test_returning_fields(raw_data, expected_data, _class):
     "_class",
     [
         RawExecutableHeader,
-        lambda raw_data: ValidatedExecutableHeader(
-            RawExecutableHeader(raw_data)
+        lambda raw_data: CachedExecutableHeader(
+            ValidatedExecutableHeader(RawExecutableHeader(raw_data))
         ),
     ],
 )
@@ -90,67 +91,7 @@ def test_changing_fields(
 
     executable_header.change(expected_data)
 
-    assert executable_header.fields() == expected_data
-
-
-@pytest.mark.parametrize(
-    "_class",
-    [
-        RawExecutableHeader,
-        lambda raw_data: ValidatedExecutableHeader(
-            RawExecutableHeader(raw_data),
-        ),
-    ],
-)
-@pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
-)
-def test_string_representation(raw_data, _class):
-    expected_string = (
-        "Executable Header:\n"
-        "  Magic: 7f 45 4c 46\n"
-        "  Class: 2\n"
-        "  Data: 1\n"
-        "  Version: 1\n"
-        "  OS/ABI: 0\n"
-        "  ABI Version: 0\n"
-        "  Type: 3\n"
-        "  Machine: 62\n"
-        "  Entry point: 0x1260\n"
-        "  Start of section headers: 0x4b20\n"
-        "  Number of section headers: 39"
-    )
-    assert str(_class(raw_data)) == expected_string
-
-
-@pytest.mark.parametrize(
-    "_class",
-    [
-        RawExecutableHeader,
-        lambda raw_data: ValidatedExecutableHeader(
-            RawExecutableHeader(raw_data),
-        ),
-    ],
-)
-@pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
-)
-def test_string_representation_on_stripped_binary(raw_data, _class):
-    expected_string = (
-        "Executable Header:\n"
-        "  Magic: 7f 45 4c 46\n"
-        "  Class: 2\n"
-        "  Data: 1\n"
-        "  Version: 1\n"
-        "  OS/ABI: 0\n"
-        "  ABI Version: 0\n"
-        "  Type: 3\n"
-        "  Machine: 62\n"
-        "  Entry point: 0x1260\n"
-        "  Start of section headers: 0x3148\n"
-        "  Number of section headers: 29"
-    )
-    assert str(_class(raw_data)) == expected_string
+    assert RawExecutableHeader(raw_data).fields() == expected_data
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,6 @@
 import struct
 from abc import ABC, abstractmethod
+from functools import cached_property
 
 from src.elf.executable_header import ExecutableHeader
 
@@ -85,24 +86,20 @@ class SectionHeader(ABC):
     # fmt: on
 
     @abstractmethod
-    def fields(self) -> dict:  # pragma: no cover
-        pass
+    def fields(self) -> dict:
+        pass  # pragma: no cover
 
     @abstractmethod
-    def change(self, fields: dict) -> None:  # pragma: no cover
-        pass
-
-    @abstractmethod
-    def __str__(self) -> str:  # pragma: no cover
-        pass
+    def change(self, fields: dict) -> None:
+        pass  # pragma: no cover
 
 
 class SectionHeaders(ABC):
     _HEADER_SIZE = 64
 
     @abstractmethod
-    def all(self) -> list[SectionHeader]:  # pragma: no cover
-        pass
+    def all(self) -> list[SectionHeader]:
+        pass  # pragma: no cover
 
 
 class RawSectionHeader(SectionHeader):
@@ -141,22 +138,6 @@ class RawSectionHeader(SectionHeader):
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")
 
-    def __str__(self) -> str:
-        fields = self.fields()
-        return (
-            "Section Header:\n"
-            f"  Name: {fields['sh_name']} (index in .shstrtab)\n"
-            f"  Type: {fields['sh_type']}\n"
-            f"  Flags: 0x{fields['sh_flags']:x}\n"
-            f"  Address: 0x{fields['sh_addr']:x}\n"
-            f"  Offset: 0x{fields['sh_offset']:x}\n"
-            f"  Section size: {fields['sh_size']} bytes\n"
-            f"  Link: {fields['sh_link']}\n"
-            f"  Info: {fields['sh_info']}\n"
-            f"  Address alignment: {fields['sh_addralign']}\n"
-            f"  Section entry size: {fields['sh_entsize']}"
-        )
-
 
 class RawSectionHeaders(SectionHeaders):
     def __init__(
@@ -193,9 +174,6 @@ class ValidatedSectionHeader(SectionHeader):
     def change(self, fields: dict) -> None:
         self.__validate(fields, self.__section_headers)
         self.__origin.change(fields)
-
-    def __str__(self) -> str:
-        return self.__origin.__str__()
 
     def __validate(
         self,
@@ -339,4 +317,29 @@ class ValidatedSectionHeaders(SectionHeaders):
         return [
             ValidatedSectionHeader(section, self.__origin)
             for section in self.__origin.all()
+        ]
+
+
+class CachedSectionHeader(SectionHeader):
+    def __init__(self, origin: SectionHeader):
+        self.__origin = origin
+
+    def fields(self) -> dict:
+        return self.__cached_fields
+
+    def change(self, fields: dict) -> None:
+        self.__origin.change(fields)
+
+    @cached_property
+    def __cached_fields(self) -> dict:
+        return self.__origin.fields()
+
+
+class CachedSectionHeaders(SectionHeaders):
+    def __init__(self, origin: SectionHeaders):
+        self.__origin = origin
+
+    def all(self) -> list[SectionHeader]:
+        return [
+            CachedSectionHeader(section) for section in self.__origin.all()
         ]

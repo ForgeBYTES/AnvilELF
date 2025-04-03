@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterator
+from functools import cached_property
 
 import capstone
 
@@ -9,46 +9,34 @@ from src.elf.section_header import SectionHeader, SectionHeaders
 
 class Section(ABC):
     @abstractmethod
-    def header_fields(self) -> dict:  # pragma: no cover
-        pass
+    def header(self) -> dict:
+        pass  # pragma: no cover
 
     @abstractmethod
-    def data(self) -> bytes:  # pragma: no cover
-        pass
+    def data(self) -> bytes:
+        pass  # pragma: no cover
 
     @abstractmethod
-    def name(self) -> str:  # pragma: no cover
-        pass
-
-    @abstractmethod
-    def __str__(self) -> str:  # pragma: no cover
-        pass
+    def name(self) -> str:
+        pass  # pragma: no cover
 
 
 class Sections(ABC):
     @abstractmethod
-    def all(self) -> list[Section]:  # pragma: no cover
-        pass
+    def all(self) -> list[Section]:
+        pass  # pragma: no cover
 
+
+class Shstrtab(Section):
     @abstractmethod
-    def by_name(self, name: str) -> Section:  # pragma: no cover
-        pass
+    def name_by_index(self, sh_name: int) -> str:
+        pass  # pragma: no cover
 
 
-class Shstrtab(ABC):
+class Disassemblable(Section):
     @abstractmethod
-    def name_by_index(self, sh_name: int) -> str:  # pragma: no cover
-        pass
-
-    @abstractmethod
-    def index_by_name(self, name: str) -> int:  # pragma: no cover
-        pass
-
-
-class Disassemblable(ABC):
-    @abstractmethod
-    def disassembly(self) -> list[str]:  # pragma: no cover
-        pass
+    def disassembly(self) -> list[str]:
+        pass  # pragma: no cover
 
 
 class RawSection(Section):
@@ -62,11 +50,11 @@ class RawSection(Section):
         self.__section_header = header
         self.__shstrtab = shstrtab
 
-    def header_fields(self) -> dict:
+    def header(self) -> dict:
         return self.__section_header.fields()
 
     def data(self) -> bytes:
-        fields = self.header_fields()
+        fields = self.__section_header.fields()
         return self.__raw_data[
             fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
             + fields["sh_size"]
@@ -74,29 +62,14 @@ class RawSection(Section):
 
     def name(self) -> str:
         if self.__shstrtab is None:
-            return str(self.header_fields()["sh_name"])
+            return str(self.__section_header.fields()["sh_name"])
 
-        return self.__shstrtab.name_by_index(self.header_fields()["sh_name"])
-
-    def __str__(self) -> str:
-        data = self.data()[:32]
-        return str(self.__section_header) + (
-            "\nSection:\n"
-            f"  Name: {self.name()}\n"
-            f"  Data: {self.__hex_dump(data)} ...\n"
-            f"  ASCII: {self.__ascii_dump(data)} ...\n"
-        )
-
-    def __hex_dump(self, data: bytes):
-        return " ".join(f"{byte:02x}" for byte in data)
-
-    def __ascii_dump(self, data: bytes):
-        return "".join(
-            chr(byte) if 32 <= byte <= 126 else "." for byte in data
+        return self.__shstrtab.name_by_index(
+            self.__section_header.fields()["sh_name"]
         )
 
 
-class RawShstrtabSection(Section, Shstrtab):
+class RawShstrtabSection(Shstrtab):
     def __init__(self, origin: Section):
         self.__origin = origin
 
@@ -106,36 +79,17 @@ class RawShstrtabSection(Section, Shstrtab):
             sh_name : data.find(b"\x00", sh_name)  # noqa: E203
         ].decode("ascii")
 
-    def index_by_name(self, name: str) -> int:
-        for offset, entry in self.__table():
-            if name == entry:
-                return offset
-        raise ValueError(f"Section name '{name}' not found in .shstrtab")
-
-    def header_fields(self) -> dict:
-        return self.__origin.header_fields()  # pragma: no cover
+    def header(self) -> dict:
+        return self.__origin.header()  # pragma: no cover
 
     def data(self) -> bytes:
         return self.__origin.data()
 
     def name(self) -> str:
-        return ".shstrtab"
-
-    def __str__(self) -> str:
-        names = "\n".join(
-            f"  [0x{offset:02x}] {entry}" for offset, entry in self.__table()
-        )
-        return str(self.__origin) + f"Section header table:\n{names}"
-
-    def __table(self) -> Iterator[tuple[int, str]]:
-        offset = 0
-        for entry in self.data().split(b"\x00"):
-            if entry:
-                yield offset, entry.decode("ascii")
-            offset += len(entry) + 1
+        return ".shstrtab"  # pragma: no cover
 
 
-class RawTextSection(Section, Disassemblable):
+class RawTextSection(Disassemblable):
     def __init__(self, origin: Section):
         self.__origin = origin
         self.__cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
@@ -143,30 +97,28 @@ class RawTextSection(Section, Disassemblable):
     def disassembly(self) -> list[str]:
         self.__cs.syntax = capstone.CS_OPT_SYNTAX_INTEL
         return [
-            (
-                f"{instruction.address:08x}: "
-                f"{instruction.mnemonic} {instruction.op_str}"
+            self.__instruction(
+                instruction.address,
+                instruction.mnemonic,
+                instruction.op_str,
             )
             for instruction in self.__cs.disasm(
                 self.data(),
-                self.header_fields()["sh_addr"],
+                self.header()["sh_addr"],
             )
         ]
 
-    def header_fields(self) -> dict:
-        return self.__origin.header_fields()
+    def header(self) -> dict:
+        return self.__origin.header()
 
     def data(self) -> bytes:
         return self.__origin.data()
 
     def name(self) -> str:
-        return ".text"
+        return ".text"  # pragma: no cover
 
-    def __str__(self) -> str:
-        instructions = "\n".join(
-            [f"  {instruction}" for instruction in self.disassembly()]
-        )
-        return str(self.__origin) + f"Disassembly:\n{instructions}"
+    def __instruction(self, address: str, mnemonic: str, op: str):
+        return f"{address:08x}: {mnemonic} {op}".rstrip()
 
 
 class RawSections(Sections):
@@ -182,42 +134,70 @@ class RawSections(Sections):
 
     def all(self) -> list[Section]:
         headers = self.__section_headers.all()
-        shstrtab = RawShstrtabSection(
+        e_shstrndx = self.__executable_header.fields()["e_shstrndx"]
+        return [
             RawSection(
                 self.__raw_data,
-                headers[self.__executable_header.fields()["e_shstrndx"]],
-            )
-        )
-        return [
-            self.__section(
-                shstrtab.name_by_index(header.fields()["sh_name"]),
                 header,
-                shstrtab,
+                RawShstrtabSection(
+                    RawSection(self.__raw_data, headers[e_shstrndx])
+                ),
             )
             for header in headers
         ]
 
-    def by_name(self, name: str) -> Section:
-        for section in self.all():
-            if section.name() == name:
-                return section
-        raise ValueError(f"Section '{name}' not found")
 
-    def __section(
-        self, name: str, header: SectionHeader, shstrtab: RawShstrtabSection
-    ) -> Section:
-        match name:
-            case ".shstrtab":
-                return RawShstrtabSection(
-                    RawSection(
-                        self.__raw_data,
-                        header,
-                        shstrtab,
-                    )
+class CachedSection(Section):
+    def __init__(self, origin: Section):
+        self.__origin = origin
+
+    def name(self) -> str:
+        return self.__cached_name
+
+    def data(self) -> bytes:
+        return self.__cached_data
+
+    def header(self) -> dict:
+        return self.__cached_header  # pragma: no cover
+
+    @cached_property
+    def __cached_name(self) -> str:
+        return self.__origin.name()
+
+    @cached_property
+    def __cached_data(self) -> bytes:
+        return self.__origin.data()
+
+    @cached_property
+    def __cached_header(self) -> dict:
+        return self.__origin.header()  # pragma: no cover
+
+
+class CachedSections(Sections):
+    def __init__(
+        self,
+        raw_data: bytearray,
+        section_headers: SectionHeaders,
+        executable_header: ExecutableHeader,
+    ):
+        self.__raw_data = raw_data
+        self.__section_headers = section_headers
+        self.__executable_header = executable_header
+
+    def all(self) -> list[Section]:
+        headers = self.__section_headers.all()
+        e_shstrndx = self.__executable_header.fields()["e_shstrndx"]
+        return [
+            CachedSection(
+                RawSection(
+                    self.__raw_data,
+                    header,
+                    RawShstrtabSection(
+                        CachedSection(
+                            RawSection(self.__raw_data, headers[e_shstrndx])
+                        )
+                    ),
                 )
-            case ".text":
-                return RawTextSection(
-                    RawSection(self.__raw_data, header, shstrtab)
-                )
-            case _:
-                return RawSection(self.__raw_data, header, shstrtab)
+            )
+            for header in headers
+        ]

@@ -20,14 +20,36 @@ AnvilELF is a purist object-oriented tool for ELF binary parsing, modification, 
 | 🔄 Dynamic Linking & Relocations |                                         |
 
 
-## 🐍 Installation 
+## ⚡ Usage
+
+```sh
+# Show executable header
+anvil> header
+
+# List all sections
+anvil> sections
+anvil> sections --full
+
+# Show a specific section by name
+anvil> section --name .shstrtab
+anvil> section --name .shstrtab --full
+
+# Disassemble .text section
+anvil> text
+anvil> text --offset 0 --size 10
+
+# Exit the shell
+anvil> exit
+```
+
+## 🏗 Development
+
+### 🐍 Installation 
 ```sh
 git clone https://github.com/dasuos/AnvilELF.git
 cd AnvilELF
 make install
 ```
-
-## ⚡ Usage 
 
 ### ✅ Code quality & testing 
 To verify code formatting, linting, type safety, and run all tests, use:

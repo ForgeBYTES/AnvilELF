@@ -7,6 +7,8 @@
 
 AnvilELF is a purist object-oriented tool for ELF binary parsing, modification, tracing, and code injection. It is built with **SOLID principles**, **full test coverage**, and a strong focus on **maintainability**.
 
+![AnvilELF CLI in action](media/cli_preview.gif)
+
 ## 🚀 Roadmap 
 
 |  **Binary Format**               |  **Process Tracing & Code Injection**   |
@@ -18,7 +20,6 @@ AnvilELF is a purist object-oriented tool for ELF binary parsing, modification, 
 | 🔄 Program Headers               |                                         |
 | 🔄 Segments                      |                                         |
 | 🔄 Dynamic Linking & Relocations |                                         |
-
 
 ## ⚡ Usage
 

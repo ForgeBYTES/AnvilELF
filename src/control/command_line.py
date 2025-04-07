@@ -21,15 +21,18 @@ class InteractiveCommandLine(CommandLine):
     def run(self):
         while self.__running:
             try:
-                self.__execute(*self.__input())
+                if not (command := self.__command()):
+                    continue
+                self.__execute(*command)
             except ValueError as error:
                 print(f"[Error] {error}")
-            except KeyboardInterrupt:
+            except (KeyboardInterrupt, EOFError):
                 break
 
-    def __input(self) -> tuple[str, list[str]]:
-        arguments = input("anvil> ").strip().split()
-        return arguments[0], arguments[1:]
+    def __command(self) -> tuple[str, list[str]] | None:
+        if arguments := input("anvil> ").strip().split():
+            return arguments[0], arguments[1:]
+        return None
 
     def __execute(self, command_name: str, arguments: list[str]) -> None:
         match command_name:

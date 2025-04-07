@@ -73,7 +73,6 @@ if __name__ == "__main__":
                 ],
             )
         ).run()
-
     except IndexError:
         print("[Info] Usage: python main.py <binary>")
     except OSError as error:

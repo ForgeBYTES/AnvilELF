@@ -80,9 +80,8 @@ class PrintableSection(Printable):
 
 
 class PrintableSections(Printable):
-    def __init__(self, sections: Sections, full: bool = False):
+    def __init__(self, sections: Sections):
         self.__sections = sections
-        self.__full = full
 
     def print(self) -> None:
         for index, section in enumerate(self.__sections.all()):

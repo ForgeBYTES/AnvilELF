@@ -9,27 +9,26 @@ from src.control.command import Command
 class CommandLine(ABC):
     @abstractmethod
     def run(self):
-        pass
+        pass  # pragma: no cover
 
 
 class InteractiveCommandLine(CommandLine):
     def __init__(self, hint: str, commands: list[Command]):
         self.__hint = hint
         self.__commands = commands
-        self.__running = True
 
     def run(self):
-        while self.__running:
+        while True:
             try:
-                if not (command := self.__command()):
+                if not (_input := self.__input()):
                     continue
-                self.__execute(*command)
+                self.__execute(*_input)
             except ValueError as error:
-                print(f"[Error] {error}")
+                print(error)
             except (KeyboardInterrupt, EOFError):
-                break
+                raise SystemExit(0)
 
-    def __command(self) -> tuple[str, list[str]] | None:
+    def __input(self) -> tuple[str, list[str]] | None:
         if arguments := input("anvil> ").strip().split():
             return arguments[0], arguments[1:]
         return None
@@ -37,7 +36,7 @@ class InteractiveCommandLine(CommandLine):
     def __execute(self, command_name: str, arguments: list[str]) -> None:
         match command_name:
             case "exit":
-                self.__running = False
+                raise SystemExit(0)
             case "help":
                 print(self.__hint)
             case _:
@@ -46,8 +45,8 @@ class InteractiveCommandLine(CommandLine):
                         command.execute(arguments)
                         return
                 print(
-                    f"[Error] Unknown command '{command_name}'",
-                    "[Info] Type 'help' to see available commands",
+                    f"Unknown command '{command_name}'",
+                    "Type 'help' to see available commands",
                     sep="\n",
                 )
 
@@ -66,6 +65,6 @@ class HistoricalCommandLine(CommandLine):
         path = os.path.expanduser(history)
         try:
             readline.read_history_file(path)
-        except FileNotFoundError:
+        except FileNotFoundError:  # pragma: no cover
             pass
         atexit.register(readline.write_history_file, path)

@@ -111,6 +111,7 @@ class TextCommand(Command):
                     arguments.size,
                 ).print()
                 return
+        raise ValueError("Section '.text' not found")  # pragma: no cover
 
     def __argument_parser(self, name: str) -> ArgumentParser:
         parser = ArgumentParser(prog=name, add_help=False)

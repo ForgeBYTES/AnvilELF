@@ -64,6 +64,7 @@ def test_sections_command(raw_data, capsys):
     # fmt: on
 
     executable_header = RawExecutableHeader(raw_data)
+
     command = SectionsCommand(
         RawSections(
             raw_data,
@@ -100,6 +101,7 @@ def test_sections_command_with_full_flag(raw_data, capsys):
     ]
 
     executable_header = RawExecutableHeader(raw_data)
+
     SectionsCommand(
         RawSections(
             raw_data,

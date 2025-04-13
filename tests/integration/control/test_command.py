@@ -80,7 +80,7 @@ def test_sections_command_with_full_flag(raw_data, capsys):
         assert (
             re.compile(
                 (
-                    r"^\s*\d+\s+"
+                    r"^\s*\[\d+]\s+"
                     r"(?:\.\S+|\s+)\s+"
                     r"\d+\s+"
                     r"0x[0-9a-fA-F]+\s+"

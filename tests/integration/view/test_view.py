@@ -124,13 +124,14 @@ def test_printing_full_section(raw_data, capsys):
 def test_printing_sections(raw_data, capsys):
     # fmt: off
     expected_output = (
-        "[0] \n[1] .interp\n[2] .note.gnu.property\n[3] .note.gnu.build-id\n"
-        "[4] .note.ABI-tag\n[5] .gnu.hash\n[6] .dynsym\n[7] .dynstr\n"
-        "[8] .gnu.version\n[9] .gnu.version_r\n[10] .rela.dyn\n"
-        "[11] .rela.plt\n[12] .init\n[13] .plt\n[14] .plt.got\n[15] .plt.sec\n"
-        "[16] .text\n[17] .fini\n[18] .rodata\n[19] .eh_frame_hdr\n"
-        "[20] .eh_frame\n[21] .init_array\n[22] .fini_array\n[23] .dynamic\n"
-        "[24] .got\n[25] .data\n[26] .bss\n[27] .comment\n[28] .shstrtab\n"
+        " [0] \n [1] .interp\n [2] .note.gnu.property\n"
+        " [3] .note.gnu.build-id\n [4] .note.ABI-tag\n [5] .gnu.hash\n"
+        " [6] .dynsym\n [7] .dynstr\n [8] .gnu.version\n [9] .gnu.version_r\n"
+        "[10] .rela.dyn\n[11] .rela.plt\n[12] .init\n[13] .plt\n"
+        "[14] .plt.got\n[15] .plt.sec\n[16] .text\n[17] .fini\n[18] .rodata\n"
+        "[19] .eh_frame_hdr\n[20] .eh_frame\n[21] .init_array\n"
+        "[22] .fini_array\n[23] .dynamic\n[24] .got\n[25] .data\n[26] .bss\n"
+        "[27] .comment\n[28] .shstrtab\n"
     )
     # fmt: on
 
@@ -172,7 +173,7 @@ def test_printing_full_sections(raw_data, capsys):
         assert (
             re.compile(
                 (
-                    r"^\s*\d+\s+"
+                    r"^\s*\[\d+]\s+"
                     r"(?:\.\S+|\s+)\s+"
                     r"\d+\s+"
                     r"0x[0-9a-fA-F]+\s+"

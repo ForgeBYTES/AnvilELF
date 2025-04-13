@@ -1,6 +1,6 @@
 import sys
 
-from src.control.application import AnvilELF
+from src.control.application import Forge
 
 intro = """
  ▗▄▖ ▗▖  ▗▖▗▖  ▗▖▗▄▄▄▖▗▖   ▗▄▄▄▖▗▖   ▗▄▄▄▖
@@ -27,4 +27,4 @@ exit                          Exit the shell
 """
 
 if __name__ == "__main__":  # pragma: no cover
-    AnvilELF(sys.argv, intro, usage, hint).command_line().run()
+    Forge(sys.argv, intro, usage, hint).build().run()

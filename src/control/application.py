@@ -26,14 +26,14 @@ from src.elf.section_header import (
 )
 
 
-class AnvilELF:
+class Forge:
     def __init__(self, argv: list, intro: str, usage: str, hint: str):
         self.__argv = argv
         self.__intro = intro
         self.__usage = usage
         self.__hint = hint
 
-    def command_line(self) -> CommandLine:
+    def build(self) -> CommandLine:
         print(self.__intro)
         try:
             raw_data = HandledArgvFile(

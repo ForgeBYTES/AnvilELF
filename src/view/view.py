@@ -80,12 +80,42 @@ class PrintableSection(Printable):
 
 
 class PrintableSections(Printable):
-    def __init__(self, sections: Sections):
+    def __init__(self, sections: Sections, full: bool = False):
         self.__sections = sections
+        self.__full = full
 
     def print(self) -> None:
-        for index, section in enumerate(self.__sections.all()):
+        if self.__full:
+            self.__full_print(self.__sections)
+        else:
+            self.__simple_print(self.__sections)
+
+    def __simple_print(self, sections: Sections) -> None:
+        for index, section in enumerate(sections.all()):
             print(f"[{index}] {section.name()}")
+
+    def __full_print(self, sections: Sections):
+        print(
+            f"{'Idx':>3} {'Name':<20} {'Type':<10} {'Flags':<10} "
+            f"{'Address':<12} {'Offset':<10} {'Size':<6} "
+            f"{'Link':<5} {'Info':<5} {'Align':<6} {'ES':<3}"
+        )
+
+        for index, section in enumerate(sections.all()):
+            header = section.header()
+            print(
+                f"{index:>3} "
+                f"{section.name():<20} "
+                f"{header['sh_type']:<10} "
+                f"{hex(header['sh_flags']):<10} "
+                f"{hex(header['sh_addr']):<12} "
+                f"{hex(header['sh_offset']):<10} "
+                f"{header['sh_size']:<6} "
+                f"{header['sh_link']:<5} "
+                f"{header['sh_info']:<5} "
+                f"{header['sh_addralign']:<6} "
+                f"{header['sh_entsize']:<3}"
+            )
 
 
 class PrintableDisassemblable(Printable):

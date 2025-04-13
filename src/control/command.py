@@ -2,7 +2,7 @@ import argparse
 from abc import ABC, abstractmethod
 
 from src.elf.executable_header import ExecutableHeader
-from src.elf.section import RawTextSection, Sections
+from src.elf.section import DisassembledSection, Sections
 from src.view.view import (
     PrintableDisassemblable,
     PrintableExecutableHeader,
@@ -52,11 +52,7 @@ class SectionsCommand(Command):
         arguments = self.__argument_parser(self.__NAME).parse_args(
             raw_arguments
         )
-        if arguments.full:
-            for section in self.__sections.all():
-                PrintableSection(section).print()
-        else:
-            PrintableSections(self.__sections).print()
+        PrintableSections(self.__sections, full=arguments.full).print()
 
     def __argument_parser(self, name: str) -> ArgumentParser:
         parser = ArgumentParser(prog=name, add_help=False)
@@ -106,7 +102,7 @@ class TextCommand(Command):
         for section in self.__sections.all():
             if section.name() == ".text":
                 PrintableDisassemblable(
-                    RawTextSection(section),
+                    DisassembledSection(section),
                     arguments.offset,
                     arguments.size,
                 ).print()
@@ -118,3 +114,39 @@ class TextCommand(Command):
         parser.add_argument("-o", "--offset", type=int, default=0)
         parser.add_argument("-s", "--size", type=int)
         return parser
+
+
+class DisassemblyCommand(Command):
+    def __init__(
+        self, sections: Sections, command_name: str, section_name: str
+    ):
+        self._sections = sections
+        self.__command_name = command_name
+        self.__section_name = section_name
+
+    def name(self) -> str:
+        return self.__command_name
+
+    def execute(self, raw_arguments: list[str]) -> None:
+        for section in self._sections.all():
+            if section.name() == self.__section_name:
+                PrintableDisassemblable(DisassembledSection(section)).print()
+                return
+        raise ValueError(
+            f"Section '{self.__section_name}' not found"
+        )  # pragma: no cover
+
+
+class PltCommand(DisassemblyCommand):
+    def __init__(self, sections: Sections):
+        super().__init__(sections, "plt", ".plt")
+
+
+class InitCommand(DisassemblyCommand):
+    def __init__(self, sections: Sections):
+        super().__init__(sections, "init", ".init")
+
+
+class FiniCommand(DisassemblyCommand):
+    def __init__(self, sections: Sections):
+        super().__init__(sections, "fini", ".fini")

@@ -3,7 +3,7 @@ import re
 import pytest
 
 from src.elf.executable_header import RawExecutableHeader
-from src.elf.section import RawSection, RawSections, RawTextSection
+from src.elf.section import DisassembledSection, RawSection, RawSections
 from src.elf.section_header import RawSectionHeaders
 from src.view.view import (
     PrintableDisassemblable,
@@ -148,6 +148,48 @@ def test_printing_sections(raw_data, capsys):
 
 
 @pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+)
+def test_printing_full_sections(raw_data, capsys):
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    PrintableSections(sections, full=True).print()
+
+    output = capsys.readouterr().out.strip().splitlines()
+
+    assert re.match(
+        r"\s*Idx\s+Name\s+Type\s+Flags\s+Address"
+        r"\s+Offset\s+Size\s+Link\s+Info\s+Align\s+ES",
+        output[0],
+    )
+
+    for line in output[1:]:
+        assert (
+            re.compile(
+                (
+                    r"^\s*\d+\s+"
+                    r"(?:\.\S+|\s+)\s+"
+                    r"\d+\s+"
+                    r"0x[0-9a-fA-F]+\s+"
+                    r"0x[0-9a-fA-F]+\s+"
+                    r"0x[0-9a-fA-F]+\s+"
+                    r"\d+\s+"
+                    r"\d+\s+"
+                    r"\d+\s+"
+                    r"\d+\s+"
+                    r"\d+\s*$"
+                )
+            ).match(line)
+            is not None
+        )
+
+
+@pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_printing_disassembly(raw_data, capsys):
@@ -177,9 +219,7 @@ def test_printing_disassembly(raw_data, capsys):
     for section in sections.all():
         if section.name() == ".text":
             PrintableDisassemblable(
-                RawTextSection(
-                    RawTextSection(section),
-                )
+                DisassembledSection(section),
             ).print()
 
             assert capsys.readouterr().out.startswith(expected_output)

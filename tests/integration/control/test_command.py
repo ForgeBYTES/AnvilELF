@@ -4,6 +4,9 @@ import pytest
 
 from src.control.command import (
     ExecutableHeaderCommand,
+    FiniCommand,
+    InitCommand,
+    PltCommand,
     SectionCommand,
     SectionsCommand,
     TextCommand,
@@ -50,19 +53,7 @@ def test_executable_header_command(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_sections_command(raw_data, capsys):
-    # fmt: off
-    expected_output = (
-        "[0] \n[1] .interp\n[2] .note.gnu.property\n[3] .note.gnu.build-id\n"
-        "[4] .note.ABI-tag\n[5] .gnu.hash\n[6] .dynsym\n[7] .dynstr\n"
-        "[8] .gnu.version\n[9] .gnu.version_r\n[10] .rela.dyn\n"
-        "[11] .rela.plt\n[12] .init\n[13] .plt\n[14] .plt.got\n[15] .plt.sec\n"
-        "[16] .text\n[17] .fini\n[18] .rodata\n[19] .eh_frame_hdr\n"
-        "[20] .eh_frame\n[21] .init_array\n[22] .fini_array\n[23] .dynamic\n"
-        "[24] .got\n[25] .data\n[26] .bss\n[27] .comment\n[28] .shstrtab\n"
-    )
-    # fmt: on
-
+def test_sections_command_with_full_flag(raw_data, capsys):
     executable_header = RawExecutableHeader(raw_data)
 
     command = SectionsCommand(
@@ -75,45 +66,35 @@ def test_sections_command(raw_data, capsys):
 
     assert command.name() == "sections"
 
-    command.execute([])
+    command.execute(["--full"])
 
-    assert capsys.readouterr().out == expected_output
+    output = capsys.readouterr().out.strip().splitlines()
 
+    assert re.match(
+        r"\s*Idx\s+Name\s+Type\s+Flags\s+Address"
+        r"\s+Offset\s+Size\s+Link\s+Info\s+Align\s+ES",
+        output[0],
+    )
 
-@pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/binary"], indirect=True
-)
-def test_sections_command_with_full_flag(raw_data, capsys):
-    patterns = [
-        r"Section Header:\n\s+Name:\s+\d+ \(index in \.shstrtab\)",
-        r"Type:\s+\d+",
-        r"Flags:\s+0x[0-9a-fA-F]+",
-        r"Address:\s+0x[0-9a-fA-F]+",
-        r"Offset:\s+0x[0-9a-fA-F]+",
-        r"Section size:\s+\d+\s+bytes",
-        r"Link:\s+\d+",
-        r"Info:\s+\d+",
-        r"Address alignment:\s+\d+",
-        r"Section entry size:\s+\d+",
-        r"Section:\n\s+Name:\s+\.[\w\.]+",
-        r"Data:\s+([0-9a-fA-F]{2} ?)+\.\.\.",
-        r"ASCII:\s+.+\.\.\.",
-    ]
-
-    executable_header = RawExecutableHeader(raw_data)
-
-    SectionsCommand(
-        RawSections(
-            raw_data,
-            RawSectionHeaders(raw_data, executable_header),
-            executable_header,
+    for line in output[1:]:
+        assert (
+            re.compile(
+                (
+                    r"^\s*\d+\s+"
+                    r"(?:\.\S+|\s+)\s+"
+                    r"\d+\s+"
+                    r"0x[0-9a-fA-F]+\s+"
+                    r"0x[0-9a-fA-F]+\s+"
+                    r"0x[0-9a-fA-F]+\s+"
+                    r"\d+\s+"
+                    r"\d+\s+"
+                    r"\d+\s+"
+                    r"\d+\s+"
+                    r"\d+\s*$"
+                )
+            ).match(line)
+            is not None
         )
-    ).execute(["--full"])
-
-    output = capsys.readouterr().out
-
-    for pattern in patterns:
-        assert re.search(pattern, output) is not None
 
 
 @pytest.mark.parametrize(
@@ -226,6 +207,101 @@ def test_text_command(raw_data, capsys):
     command.execute([])
 
     assert capsys.readouterr().out.startswith(expected_output)
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
+)
+def test_plt_command(raw_data, capsys):
+    expected_output = (
+        "00001020: push qword ptr [rip + 0x2f72]\n"
+        "00001026: bnd jmp qword ptr [rip + 0x2f73]\n"
+        "0000102d: nop dword ptr [rax]\n"
+        "00001030: endbr64\n"
+        "00001034: push 0\n"
+        "00001039: bnd jmp 0x1020\n"
+        "0000103f: nop\n"
+        "00001040: endbr64\n"
+        "00001044: push 1\n"
+        "00001049: bnd jmp 0x1020\n"
+        "0000104f: nop\n"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+
+    command = PltCommand(
+        RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, executable_header),
+            executable_header,
+        )
+    )
+
+    assert command.name() == "plt"
+
+    command.execute([])
+
+    assert capsys.readouterr().out.startswith(expected_output)
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_init_command(raw_data, capsys):
+    expected_output = (
+        "00001000: endbr64\n"
+        "00001004: sub rsp, 8\n"
+        "00001008: mov rax, qword ptr [rip + 0x2fd9]\n"
+        "0000100f: test rax, rax\n"
+        "00001012: je 0x1016\n"
+        "00001014: call rax\n"
+        "00001016: add rsp, 8\n"
+        "0000101a: ret\n"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+
+    command = InitCommand(
+        RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, executable_header),
+            executable_header,
+        )
+    )
+
+    assert command.name() == "init"
+
+    command.execute([])
+
+    assert capsys.readouterr().out == expected_output
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_fini_command(raw_data, capsys):
+    expected_output = (
+        "00001178: endbr64\n"
+        "0000117c: sub rsp, 8\n"
+        "00001180: add rsp, 8\n"
+        "00001184: ret\n"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+
+    command = FiniCommand(
+        RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, executable_header),
+            executable_header,
+        )
+    )
+
+    assert command.name() == "fini"
+
+    command.execute([])
+
+    assert capsys.readouterr().out == expected_output
 
 
 @pytest.mark.parametrize(

@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 
 from src.control.command import (
     ExecutableHeaderCommand,
+    FiniCommand,
+    InitCommand,
+    PltCommand,
     SectionCommand,
     SectionsCommand,
     TextCommand,
@@ -67,6 +70,9 @@ class AnvilELF(Application):
                         SectionsCommand(sections),
                         SectionCommand(sections),
                         TextCommand(sections),
+                        PltCommand(sections),
+                        InitCommand(sections),
+                        FiniCommand(sections),
                     ],
                 )
             )

@@ -20,6 +20,9 @@ header                        Show executable header
 sections [--full]             List all sections
 section -n NAME [-full]       Show section by name
 text [--offset N] [--size N]  Disassemble .text section
+plt                           Disassemble .plt section
+init                          Disassemble .init section
+fin                           Disassemble .fin section
 exit                          Exit the shell
 """
 

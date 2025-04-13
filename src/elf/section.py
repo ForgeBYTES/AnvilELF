@@ -89,24 +89,29 @@ class RawShstrtabSection(Shstrtab):
         return ".shstrtab"  # pragma: no cover
 
 
-class RawTextSection(Disassemblable):
+class DisassembledSection(Disassemblable):
+    __SHF_EXECINSTR = 0x4
+
     def __init__(self, origin: Section):
         self.__origin = origin
         self.__cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
 
     def disassembly(self) -> list[str]:
-        self.__cs.syntax = capstone.CS_OPT_SYNTAX_INTEL
-        return [
-            self.__instruction(
-                instruction.address,
-                instruction.mnemonic,
-                instruction.op_str,
-            )
-            for instruction in self.__cs.disasm(
-                self.data(),
-                self.header()["sh_addr"],
-            )
-        ]
+        header = self.header()
+        if self.__is_executable(header):
+            self.__cs.syntax = capstone.CS_OPT_SYNTAX_INTEL
+            return [
+                self.__instruction(
+                    instruction.address,
+                    instruction.mnemonic,
+                    instruction.op_str,
+                )
+                for instruction in self.__cs.disasm(
+                    self.data(),
+                    header["sh_addr"],
+                )
+            ]
+        raise ValueError("Section is not executable")
 
     def header(self) -> dict:
         return self.__origin.header()
@@ -115,7 +120,10 @@ class RawTextSection(Disassemblable):
         return self.__origin.data()
 
     def name(self) -> str:
-        return ".text"  # pragma: no cover
+        return self.__origin.name()  # pragma: no cover
+
+    def __is_executable(self, header: dict) -> bool:
+        return header["sh_flags"] & self.__SHF_EXECINSTR
 
     def __instruction(self, address: str, mnemonic: str, op: str):
         return f"{address:08x}: {mnemonic} {op}".rstrip()

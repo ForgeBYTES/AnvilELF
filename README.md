@@ -38,6 +38,12 @@ anvil> section --name .shstrtab --full
 # Disassemble .text section
 anvil> text
 anvil> text --offset 0 --size 10
+# Disassemble .plt section
+anvil> plt
+# Disassemble .init section
+anvil> init
+# Disassemble .fini section
+anvil> fini
 
 # Exit the shell
 anvil> exit

@@ -1,5 +1,3 @@
-from abc import ABC, abstractmethod
-
 from src.control.command import (
     ExecutableHeaderCommand,
     FiniCommand,
@@ -28,20 +26,14 @@ from src.elf.section_header import (
 )
 
 
-class Application(ABC):
-    @abstractmethod
-    def command_line(self) -> CommandLine:
-        pass  # pragma: no cover
-
-
-class AnvilELF(Application):
+class AnvilELF:
     def __init__(self, argv: list, intro: str, usage: str, hint: str):
         self.__argv = argv
         self.__intro = intro
         self.__usage = usage
         self.__hint = hint
 
-    def command_line(self):
+    def command_line(self) -> CommandLine:
         print(self.__intro)
         try:
             raw_data = HandledArgvFile(

@@ -6,10 +6,10 @@ from src.elf.executable_header import (
 )
 from src.elf.section import (
     CachedSections,
+    DisassembledSection,
     RawSection,
     RawSections,
     RawShstrtabSection,
-    RawTextSection,
 )
 from src.elf.section_header import (
     CachedSectionHeaders,
@@ -151,6 +151,29 @@ def test_returning_text_disassembly(raw_data):
     for section in sections.all():
         if section.name() == ".text":
             assert (
-                RawTextSection(section).disassembly()[: len(expected_output)]
+                DisassembledSection(section).disassembly()[
+                    : len(expected_output)
+                ]
                 == expected_output
             )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_disassembling_not_executable_section(raw_data):
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    bss = next(
+        section for section in sections.all() if section.name() == ".bss"
+    )
+
+    assert bss is not None
+
+    with pytest.raises(ValueError, match="Section is not executable"):
+        DisassembledSection(bss).disassembly()

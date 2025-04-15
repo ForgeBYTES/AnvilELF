@@ -1,3 +1,4 @@
+import struct
 from abc import ABC, abstractmethod
 from functools import cached_property
 
@@ -36,6 +37,34 @@ class Shstrtab(Section):
 class Disassemblable(Section):
     @abstractmethod
     def disassembly(self) -> list[str]:
+        pass  # pragma: no cover
+
+
+class Symbol(ABC):
+    @abstractmethod
+    def fields(self) -> dict:
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def name(self) -> str:
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def bind(self):
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def type(self):
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def visibility(self):
+        pass  # pragma: no cover
+
+
+class SymbolTable(Section):
+    @abstractmethod
+    def all(self) -> list[Symbol]:
         pass  # pragma: no cover
 
 
@@ -87,6 +116,70 @@ class RawShstrtabSection(Shstrtab):
 
     def name(self) -> str:
         return ".shstrtab"  # pragma: no cover
+
+
+class RawSymbol(Symbol):
+    __STRUCT_FORMAT = "<IBBHQQ"
+
+    def __init__(self, data: bytes, offset: int, string_table: Section):
+        self.__data = data
+        self.__offset = offset
+        self.__string_table = string_table
+
+    def fields(self) -> dict:
+        _struct = struct.unpack_from(
+            self.__STRUCT_FORMAT,
+            self.__data,
+            self.__offset,
+        )
+        return {
+            "st_name": _struct[0],
+            "st_info": _struct[1],
+            "st_other": _struct[2],
+            "st_shndx": _struct[3],
+            "st_value": _struct[4],
+            "st_size": _struct[5],
+        }
+
+    def name(self) -> str:
+        data = self.__string_table.data()
+        st_name = self.fields()["st_name"]
+        return data[
+            st_name : data.find(b"\x00", st_name)  # noqa: E203
+        ].decode("utf-8")
+
+    def bind(self):
+        return self.fields()["st_info"] >> 4
+
+    def type(self):
+        return self.fields()["st_info"] & 0xF
+
+    def visibility(self):
+        return self.fields()["st_other"] & 0x3
+
+
+class RawSymbolTable(SymbolTable):
+    __ENTRY_SIZE = 24
+
+    def __init__(self, origin: Section, string_table: Section):
+        self.__origin = origin
+        self.__string_table = string_table
+
+    def all(self) -> list[Symbol]:
+        data = self.__origin.data()
+        return [
+            RawSymbol(data, offset, self.__string_table)
+            for offset in range(0, len(data), self.__ENTRY_SIZE)
+        ]
+
+    def header(self) -> dict:
+        return self.__origin.header()  # pragma: no cover
+
+    def data(self) -> bytes:
+        return self.__origin.data()  # pragma: no cover
+
+    def name(self) -> str:
+        return self.__origin.name()  # pragma: no cover
 
 
 class DisassembledSection(Disassemblable):

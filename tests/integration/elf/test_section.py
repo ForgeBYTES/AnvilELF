@@ -9,7 +9,8 @@ from src.elf.section import (
     DisassembledSection,
     RawSection,
     RawSections,
-    RawShstrtabSection,
+    RawStringTable,
+    RawSymbolTable,
 )
 from src.elf.section_header import (
     CachedSectionHeaders,
@@ -112,7 +113,7 @@ def test_returning_shstrtab_name_by_index(raw_data):
     executable_header = RawExecutableHeader(raw_data)
     section_headers = RawSectionHeaders(raw_data, executable_header)
 
-    shstrtab = RawShstrtabSection(
+    shstrtab = RawStringTable(
         RawSection(
             raw_data,
             section_headers.all()[executable_header.fields()["e_shstrndx"]],
@@ -177,3 +178,48 @@ def test_raising_on_disassembling_not_executable_section(raw_data):
 
     with pytest.raises(ValueError, match="Section is not executable"):
         DisassembledSection(bss).disassembly()
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_returning_symbol_table(raw_data):
+    expected_name = "_init"
+    expected_fields = {
+        "st_name": 473,
+        "st_info": 18,
+        "st_other": 2,
+        "st_shndx": 12,
+        "st_value": 4096,
+        "st_size": 0,
+    }
+    expected_type = 2
+    expected_visibility = 2
+    expected_bind = 1
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    symtab = next(
+        section for section in sections.all() if section.name() == ".symtab"
+    )
+
+    assert symtab is not None
+
+    strtab = next(
+        section for section in sections.all() if section.name() == ".strtab"
+    )
+
+    assert strtab is not None
+
+    symbol = RawSymbolTable(symtab, RawStringTable(strtab)).all()[-1]
+
+    assert symbol.name() == expected_name
+    assert symbol.fields() == expected_fields
+    assert symbol.type() == expected_type
+    assert symbol.visibility() == expected_visibility
+    assert symbol.bind() == expected_bind

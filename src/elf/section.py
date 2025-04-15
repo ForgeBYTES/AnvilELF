@@ -28,7 +28,7 @@ class Sections(ABC):
         pass  # pragma: no cover
 
 
-class Shstrtab(Section):
+class StringTable(Section):
     @abstractmethod
     def name_by_index(self, sh_name: int) -> str:
         pass  # pragma: no cover
@@ -73,7 +73,7 @@ class RawSection(Section):
         self,
         raw_data: bytearray,
         header: SectionHeader,
-        shstrtab: Shstrtab | None = None,
+        shstrtab: StringTable | None = None,
     ):
         self.__raw_data = raw_data
         self.__section_header = header
@@ -98,7 +98,7 @@ class RawSection(Section):
         )
 
 
-class RawShstrtabSection(Shstrtab):
+class RawStringTable(StringTable):
     def __init__(self, origin: Section):
         self.__origin = origin
 
@@ -115,13 +115,13 @@ class RawShstrtabSection(Shstrtab):
         return self.__origin.data()
 
     def name(self) -> str:
-        return ".shstrtab"  # pragma: no cover
+        return self.__origin.name()  # pragma: no cover
 
 
 class RawSymbol(Symbol):
     __STRUCT_FORMAT = "<IBBHQQ"
 
-    def __init__(self, data: bytes, offset: int, string_table: Section):
+    def __init__(self, data: bytes, offset: int, string_table: StringTable):
         self.__data = data
         self.__offset = offset
         self.__string_table = string_table
@@ -142,11 +142,7 @@ class RawSymbol(Symbol):
         }
 
     def name(self) -> str:
-        data = self.__string_table.data()
-        st_name = self.fields()["st_name"]
-        return data[
-            st_name : data.find(b"\x00", st_name)  # noqa: E203
-        ].decode("utf-8")
+        return self.__string_table.name_by_index(self.fields()["st_name"])
 
     def bind(self):
         return self.fields()["st_info"] >> 4
@@ -161,7 +157,7 @@ class RawSymbol(Symbol):
 class RawSymbolTable(SymbolTable):
     __ENTRY_SIZE = 24
 
-    def __init__(self, origin: Section, string_table: Section):
+    def __init__(self, origin: Section, string_table: StringTable):
         self.__origin = origin
         self.__string_table = string_table
 
@@ -240,7 +236,7 @@ class RawSections(Sections):
             RawSection(
                 self.__raw_data,
                 header,
-                RawShstrtabSection(
+                RawStringTable(
                     RawSection(self.__raw_data, headers[e_shstrndx])
                 ),
             )
@@ -293,7 +289,7 @@ class CachedSections(Sections):
                 RawSection(
                     self.__raw_data,
                     header,
-                    RawShstrtabSection(
+                    RawStringTable(
                         CachedSection(
                             RawSection(self.__raw_data, headers[e_shstrndx])
                         )

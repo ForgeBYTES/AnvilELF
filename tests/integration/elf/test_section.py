@@ -9,7 +9,7 @@ from src.elf.section import (
     DisassembledSection,
     RawSection,
     RawSections,
-    RawShstrtabSection,
+    RawStringTable,
     RawSymbolTable,
 )
 from src.elf.section_header import (
@@ -113,7 +113,7 @@ def test_returning_shstrtab_name_by_index(raw_data):
     executable_header = RawExecutableHeader(raw_data)
     section_headers = RawSectionHeaders(raw_data, executable_header)
 
-    shstrtab = RawShstrtabSection(
+    shstrtab = RawStringTable(
         RawSection(
             raw_data,
             section_headers.all()[executable_header.fields()["e_shstrndx"]],
@@ -216,7 +216,7 @@ def test_returning_symbol_table(raw_data):
 
     assert strtab is not None
 
-    symbol = RawSymbolTable(symtab, strtab).all()[-1]
+    symbol = RawSymbolTable(symtab, RawStringTable(strtab)).all()[-1]
 
     assert symbol.name() == expected_name
     assert symbol.fields() == expected_fields

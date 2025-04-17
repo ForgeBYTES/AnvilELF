@@ -1,7 +1,13 @@
 from abc import ABC, abstractmethod
 
 from src.elf.executable_header import ExecutableHeader
-from src.elf.section import Disassemblable, Section, Sections
+from src.elf.section import (
+    Disassemblable,
+    Section,
+    Sections,
+    Symbol,
+    SymbolTable,
+)
 
 
 class Printable(ABC):
@@ -96,15 +102,14 @@ class PrintableSections(Printable):
 
     def __full_print(self, sections: Sections):
         print(
-            f"{'Idx':>4} {'Name':<20} {'Type':<10} {'Flags':<10} "
+            f"{'Idx':<4} {'Name':<20} {'Type':<10} {'Flags':<10} "
             f"{'Address':<12} {'Offset':<10} {'Size':<6} "
             f"{'Link':<5} {'Info':<5} {'Align':<6} {'ES':<3}"
         )
-
         for index, section in enumerate(sections.all()):
             header = section.header()
             print(
-                f"{f'[{index}]':>4} "
+                f"{f'[{index}]':<4} "
                 f"{section.name():<20} "
                 f"{header['sh_type']:<10} "
                 f"0x{header['sh_flags']:08x} "
@@ -116,6 +121,53 @@ class PrintableSections(Printable):
                 f"{header['sh_addralign']:<6} "
                 f"{header['sh_entsize']:<3}"
             )
+
+
+class PrintableSymbolTable(Printable):
+    def __init__(self, symbol_table: SymbolTable):
+        self.__symbol_table = symbol_table
+
+    def print(self) -> None:
+        print(f"Symbol Table: {self.__symbol_table.name()}")
+        print(
+            f"{'Idx':<4}  {'Value':<18}  {'Size':>5}  {'Bind':<8}  "
+            f"{'Type':<8}  {'Vis':<10}  {'Name'}"
+        )
+        for index, symbol in enumerate(self.__symbol_table.symbols()):
+            fields = symbol.fields()
+            print(
+                f"{f'[{index}]':<4}  "
+                f"0x{fields['st_value']:016x}  "
+                f"{fields['st_size']:<5}  "
+                f"{self.__bind_name(symbol.bind()):<8}  "
+                f"{self.__type_name(symbol.type()):<8}  "
+                f"{self.__visibility_name(symbol.visibility()):<10}  "
+                f"{symbol.name()}"
+            )
+
+    def __bind_name(self, bind: int) -> str:
+        return {
+            Symbol._STB_LOCAL: "LOCAL",
+            Symbol._STB_GLOBAL: "GLOBAL",
+            Symbol._STB_WEAK: "WEAK",
+        }.get(bind, f"{bind}")
+
+    def __type_name(self, _type: int) -> str:
+        return {
+            Symbol._STT_NOTYPE: "NOTYPE",
+            Symbol._STT_OBJECT: "OBJECT",
+            Symbol._STT_FUNC: "FUNC",
+            Symbol._STT_SECTION: "SECTION",
+            Symbol._STT_FILE: "FILE",
+        }.get(_type, f"{_type}")
+
+    def __visibility_name(self, visibility: int) -> str:
+        return {
+            Symbol._STV_DEFAULT: "DEFAULT",
+            Symbol._STV_INTERNAL: "INTERNAL",
+            Symbol._STV_HIDDEN: "HIDDEN",
+            Symbol._STV_PROTECTED: "PROTECTED",
+        }.get(visibility, f"{visibility}")
 
 
 class PrintableDisassemblable(Printable):

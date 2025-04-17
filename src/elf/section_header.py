@@ -1,6 +1,5 @@
 import struct
 from abc import ABC, abstractmethod
-from functools import cached_property
 
 from src.elf.executable_header import ExecutableHeader
 
@@ -317,29 +316,4 @@ class ValidatedSectionHeaders(SectionHeaders):
         return [
             ValidatedSectionHeader(section, self.__origin)
             for section in self.__origin.all()
-        ]
-
-
-class CachedSectionHeader(SectionHeader):
-    def __init__(self, origin: SectionHeader):
-        self.__origin = origin
-
-    def fields(self) -> dict:
-        return self.__cached_fields
-
-    def change(self, fields: dict) -> None:
-        self.__origin.change(fields)
-
-    @cached_property
-    def __cached_fields(self) -> dict:
-        return self.__origin.fields()
-
-
-class CachedSectionHeaders(SectionHeaders):
-    def __init__(self, origin: SectionHeaders):
-        self.__origin = origin
-
-    def all(self) -> list[SectionHeader]:
-        return [
-            CachedSectionHeader(section) for section in self.__origin.all()
         ]

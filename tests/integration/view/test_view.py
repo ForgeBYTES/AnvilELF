@@ -217,10 +217,8 @@ def test_printing_disassembly(raw_data, capsys):
         executable_header,
     )
 
-    for section in sections.all():
-        if section.name() == ".text":
-            PrintableDisassemblable(
-                DisassembledSection(section),
-            ).print()
+    PrintableDisassemblable(
+        DisassembledSection(sections.find(".text")),
+    ).print()
 
-            assert capsys.readouterr().out.startswith(expected_output)
+    assert capsys.readouterr().out.startswith(expected_output)

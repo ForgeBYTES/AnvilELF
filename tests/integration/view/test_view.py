@@ -3,13 +3,20 @@ import re
 import pytest
 
 from src.elf.executable_header import RawExecutableHeader
-from src.elf.section import DisassembledSection, RawSection, RawSections
+from src.elf.section import (
+    DisassembledSection,
+    RawSection,
+    RawSections,
+    RawStringTable,
+    RawSymbolTable,
+)
 from src.elf.section_header import RawSectionHeaders
 from src.view.view import (
     PrintableDisassemblable,
     PrintableExecutableHeader,
     PrintableSection,
     PrintableSections,
+    PrintableSymbolTable,
 )
 
 
@@ -184,6 +191,50 @@ def test_printing_full_sections(raw_data, capsys):
                     r"\d+\s+"
                     r"\d+\s+"
                     r"\d+\s*$"
+                )
+            ).match(line)
+            is not None
+        )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
+)
+def test_printing_symbol_table(raw_data, capsys):
+    expected_header = "Symbol Table: .dynsym"
+    expected_columns = (
+        "Idx   Value                Size  "
+        "Bind      Type      Vis         Name"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    PrintableSymbolTable(
+        RawSymbolTable(
+            sections.find(".dynsym"),
+            RawStringTable(sections.find(".dynstr")),
+        )
+    ).print()
+
+    output = capsys.readouterr().out.splitlines()
+
+    assert output[0] == expected_header
+    assert output[1] == expected_columns
+
+    for line in output[2:]:
+        assert (
+            re.compile(
+                (
+                    r"\[\d+\]\s+0x[0-9a-f]{16}\s+\d+\s+"
+                    r"(LOCAL|GLOBAL|WEAK)\s+"
+                    r"(NOTYPE|OBJECT|FUNC|SECTION|FILE|COMMON|TLS)\s+"
+                    r"(DEFAULT|INTERNAL|HIDDEN|PROTECTED)\s+"
+                    r"[\x20-\x7E]*"
                 )
             ).match(line)
             is not None

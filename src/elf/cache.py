@@ -175,4 +175,4 @@ class CachedSections(Sections):
         for section in self.all():
             if section.name() == name:
                 return CachedSection(section)
-        raise ValueError("Section not found")
+        raise ValueError(f"Section '{name}' not found")

@@ -92,6 +92,55 @@ def test_returning_section_names_on_stripped_binary(raw_data):
 
 
 @pytest.mark.parametrize(
+    "sections",
+    [
+        lambda raw_data: RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+            RawExecutableHeader(raw_data),
+        ),
+        lambda raw_data: CachedSections(
+            raw_data,
+            CachedSectionHeaders(
+                RawSectionHeaders(raw_data, RawExecutableHeader(raw_data))
+            ),
+            CachedExecutableHeader(RawExecutableHeader(raw_data)),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
+)
+def test_finding_section(raw_data, sections):
+    assert sections(raw_data).find(".text").name() == ".text"
+
+
+@pytest.mark.parametrize(
+    "sections",
+    [
+        lambda raw_data: RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+            RawExecutableHeader(raw_data),
+        ),
+        lambda raw_data: CachedSections(
+            raw_data,
+            CachedSectionHeaders(
+                RawSectionHeaders(raw_data, RawExecutableHeader(raw_data))
+            ),
+            CachedExecutableHeader(RawExecutableHeader(raw_data)),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_finding_nonexistent_section(raw_data, sections):
+    with pytest.raises(ValueError, match="Section '.nonexistent' not found"):
+        assert sections(raw_data).find(".nonexistent")
+
+
+@pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_returning_name_offset_if_shstrtab_is_not_present(raw_data):

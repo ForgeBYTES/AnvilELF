@@ -1,22 +1,21 @@
 import pytest
 
-from src.elf.executable_header import (
+from src.elf.cache import (
     CachedExecutableHeader,
-    RawExecutableHeader,
-)
-from src.elf.section import (
+    CachedSectionHeaders,
     CachedSections,
+    CachedSymbolTable,
+)
+from src.elf.executable_header import RawExecutableHeader
+from src.elf.section import (
     DisassembledSection,
     RawSection,
     RawSections,
     RawStringTable,
     RawSymbolTable,
+    ValidatedSymbolTable,
 )
-from src.elf.section_header import (
-    CachedSectionHeaders,
-    RawSectionHeader,
-    RawSectionHeaders,
-)
+from src.elf.section_header import RawSectionHeader, RawSectionHeaders
 
 
 @pytest.fixture
@@ -90,6 +89,55 @@ def test_returning_section_names_on_stripped_binary(raw_data):
     assert [
         section.name() for section in sections.all()
     ] == expected_section_names
+
+
+@pytest.mark.parametrize(
+    "sections",
+    [
+        lambda raw_data: RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+            RawExecutableHeader(raw_data),
+        ),
+        lambda raw_data: CachedSections(
+            raw_data,
+            CachedSectionHeaders(
+                RawSectionHeaders(raw_data, RawExecutableHeader(raw_data))
+            ),
+            CachedExecutableHeader(RawExecutableHeader(raw_data)),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
+)
+def test_finding_section(raw_data, sections):
+    assert sections(raw_data).find(".text").name() == ".text"
+
+
+@pytest.mark.parametrize(
+    "sections",
+    [
+        lambda raw_data: RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+            RawExecutableHeader(raw_data),
+        ),
+        lambda raw_data: CachedSections(
+            raw_data,
+            CachedSectionHeaders(
+                RawSectionHeaders(raw_data, RawExecutableHeader(raw_data))
+            ),
+            CachedExecutableHeader(RawExecutableHeader(raw_data)),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_finding_nonexistent_section(raw_data, sections):
+    with pytest.raises(ValueError, match="Section '.nonexistent' not found"):
+        assert sections(raw_data).find(".nonexistent")
 
 
 @pytest.mark.parametrize(
@@ -170,14 +218,8 @@ def test_raising_on_disassembling_not_executable_section(raw_data):
         executable_header,
     )
 
-    bss = next(
-        section for section in sections.all() if section.name() == ".bss"
-    )
-
-    assert bss is not None
-
     with pytest.raises(ValueError, match="Section is not executable"):
-        DisassembledSection(bss).disassembly()
+        DisassembledSection(sections.find(".bss")).disassembly()
 
 
 @pytest.mark.parametrize(
@@ -204,22 +246,25 @@ def test_returning_symbol_table(raw_data):
         executable_header,
     )
 
-    symtab = next(
-        section for section in sections.all() if section.name() == ".symtab"
-    )
+    symtab = sections.find(".symtab")
+    strtab = sections.find(".strtab")
 
-    assert symtab is not None
-
-    strtab = next(
-        section for section in sections.all() if section.name() == ".strtab"
-    )
-
-    assert strtab is not None
-
-    symbol = RawSymbolTable(symtab, RawStringTable(strtab)).all()[-1]
+    symbol = ValidatedSymbolTable(
+        RawSymbolTable(symtab, RawStringTable(strtab))
+    ).symbols()[-1]
 
     assert symbol.name() == expected_name
     assert symbol.fields() == expected_fields
     assert symbol.type() == expected_type
     assert symbol.visibility() == expected_visibility
     assert symbol.bind() == expected_bind
+
+    cached_symbol = CachedSymbolTable(
+        symtab, RawStringTable(strtab)
+    ).symbols()[-1]
+
+    assert cached_symbol.name() == expected_name
+    assert cached_symbol.fields() == expected_fields
+    assert cached_symbol.type() == expected_type
+    assert cached_symbol.visibility() == expected_visibility
+    assert cached_symbol.bind() == expected_bind

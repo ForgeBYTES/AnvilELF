@@ -1,7 +1,7 @@
 import pytest
 
+from src.elf.cache import CachedExecutableHeader
 from src.elf.executable_header import (
-    CachedExecutableHeader,
     RawExecutableHeader,
     ValidatedExecutableHeader,
 )

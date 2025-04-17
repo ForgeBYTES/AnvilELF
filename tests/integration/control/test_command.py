@@ -3,6 +3,7 @@ import re
 import pytest
 
 from src.control.command import (
+    DynsymCommand,
     ExecutableHeaderCommand,
     FiniCommand,
     InitCommand,
@@ -170,6 +171,50 @@ def test_section_command_with_full_flag(raw_data, capsys):
 
     for pattern in patterns:
         assert re.search(pattern, output) is not None
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+)
+def test_symbol_table_command(raw_data, capsys):
+    expected_header = "Symbol Table: .dynsym"
+    expected_columns = (
+        "Idx   Value                Size  "
+        "Bind      Type      Vis         Name"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+
+    command = DynsymCommand(
+        RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, executable_header),
+            executable_header,
+        )
+    )
+
+    assert command.name() == "dynsym"
+
+    command.execute([])
+
+    output = capsys.readouterr().out.splitlines()
+
+    assert output[0] == expected_header
+    assert output[1] == expected_columns
+
+    for line in output[2:]:
+        assert (
+            re.compile(
+                (
+                    r"\[\d+\]\s+0x[0-9a-f]{16}\s+\d+\s+"
+                    r"(LOCAL|GLOBAL|WEAK)\s+"
+                    r"(NOTYPE|OBJECT|FUNC|SECTION|FILE|COMMON|TLS)\s+"
+                    r"(DEFAULT|INTERNAL|HIDDEN|PROTECTED)\s+"
+                    r"[\x20-\x7E]*"
+                )
+            ).match(line)
+            is not None
+        )
 
 
 @pytest.mark.parametrize(

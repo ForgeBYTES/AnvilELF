@@ -2,12 +2,19 @@ import argparse
 from abc import ABC, abstractmethod
 
 from src.elf.executable_header import ExecutableHeader
-from src.elf.section import DisassembledSection, Sections
+from src.elf.section import (
+    DisassembledSection,
+    RawStringTable,
+    RawSymbolTable,
+    Sections,
+    ValidatedSymbolTable,
+)
 from src.view.view import (
     PrintableDisassemblable,
     PrintableExecutableHeader,
     PrintableSection,
     PrintableSections,
+    PrintableSymbolTable,
 )
 
 
@@ -73,11 +80,9 @@ class SectionCommand(Command):
         arguments = self.__argument_parser(self.__NAME).parse_args(
             raw_arguments
         )
-        for section in self.__sections.all():
-            if section.name() == arguments.name:
-                PrintableSection(section, arguments.full).print()
-                return
-        raise ValueError(f"Section '{arguments.name}' not found")
+        PrintableSection(
+            self.__sections.find(arguments.name), arguments.full
+        ).print()
 
     def __argument_parser(self, name: str) -> ArgumentParser:
         parser = ArgumentParser(prog=name, add_help=False)
@@ -99,15 +104,11 @@ class TextCommand(Command):
         arguments = self.__argument_parser(self.__NAME).parse_args(
             raw_arguments
         )
-        for section in self.__sections.all():
-            if section.name() == ".text":
-                PrintableDisassemblable(
-                    DisassembledSection(section),
-                    arguments.offset,
-                    arguments.size,
-                ).print()
-                return
-        raise ValueError("Section '.text' not found")  # pragma: no cover
+        PrintableDisassemblable(
+            DisassembledSection(self.__sections.find(".text")),
+            arguments.offset,
+            arguments.size,
+        ).print()
 
     def __argument_parser(self, name: str) -> ArgumentParser:
         parser = ArgumentParser(prog=name, add_help=False)
@@ -116,11 +117,50 @@ class TextCommand(Command):
         return parser
 
 
+class StringTableCommand(Command):
+    def __init__(
+        self,
+        sections: Sections,
+        command_name: str,
+        section_name: str,
+        string_table_name: str,
+    ):
+        self.__sections = sections
+        self.__command_name = command_name
+        self.__section_name = section_name
+        self.__string_table_name = string_table_name
+
+    def name(self) -> str:
+        return self.__command_name
+
+    def execute(self, raw_arguments: list[str]) -> None:
+        PrintableSymbolTable(
+            ValidatedSymbolTable(
+                RawSymbolTable(
+                    self.__sections.find(self.__section_name),
+                    RawStringTable(
+                        self.__sections.find(self.__string_table_name)
+                    ),
+                )
+            )
+        ).print()
+
+
+class DynsymCommand(StringTableCommand):
+    def __init__(self, sections: Sections):
+        super().__init__(sections, "dynsym", ".dynsym", ".dynstr")
+
+
+class SymtabCommand(StringTableCommand):
+    def __init__(self, sections: Sections):
+        super().__init__(sections, "symtab", ".symtab", ".strtab")
+
+
 class DisassemblyCommand(Command):
     def __init__(
         self, sections: Sections, command_name: str, section_name: str
     ):
-        self._sections = sections
+        self.__sections = sections
         self.__command_name = command_name
         self.__section_name = section_name
 
@@ -128,13 +168,9 @@ class DisassemblyCommand(Command):
         return self.__command_name
 
     def execute(self, raw_arguments: list[str]) -> None:
-        for section in self._sections.all():
-            if section.name() == self.__section_name:
-                PrintableDisassemblable(DisassembledSection(section)).print()
-                return
-        raise ValueError(
-            f"Section '{self.__section_name}' not found"
-        )  # pragma: no cover
+        PrintableDisassemblable(
+            DisassembledSection(self.__sections.find(self.__section_name))
+        ).print()
 
 
 class PltCommand(DisassemblyCommand):

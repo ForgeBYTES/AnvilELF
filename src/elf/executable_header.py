@@ -1,6 +1,5 @@
 import struct
 from abc import ABC, abstractmethod
-from functools import cached_property
 
 
 class ExecutableHeader(ABC):
@@ -197,18 +196,3 @@ class ValidatedExecutableHeader(ExecutableHeader):
     def __validate_field_exists(self, field: str, fields: list):
         if field not in fields:
             raise ValueError(f"Unknown field {field}")
-
-
-class CachedExecutableHeader(ExecutableHeader):
-    def __init__(self, origin: ExecutableHeader):
-        self.__origin = origin
-
-    def fields(self) -> dict:
-        return self.__cached_fields
-
-    def change(self, fields: dict) -> None:
-        self.__origin.change(fields)
-
-    @cached_property
-    def __cached_fields(self) -> dict:
-        return self.__origin.fields()

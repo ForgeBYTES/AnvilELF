@@ -1,8 +1,8 @@
 import pytest
 
+from src.elf.cache import CachedSectionHeader
 from src.elf.executable_header import RawExecutableHeader
 from src.elf.section_header import (
-    CachedSectionHeader,
     RawSectionHeader,
     RawSectionHeaders,
     SectionHeader,

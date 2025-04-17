@@ -1,10 +1,12 @@
 from src.control.command import (
+    DynsymCommand,
     ExecutableHeaderCommand,
     FiniCommand,
     InitCommand,
     PltCommand,
     SectionCommand,
     SectionsCommand,
+    SymtabCommand,
     TextCommand,
 )
 from src.control.command_line import (
@@ -13,17 +15,16 @@ from src.control.command_line import (
     InteractiveCommandLine,
 )
 from src.control.input import ArgvFile, HandledArgvFile
-from src.elf.executable_header import (
+from src.elf.cache import (
     CachedExecutableHeader,
+    CachedSectionHeaders,
+    CachedSections,
+)
+from src.elf.executable_header import (
     RawExecutableHeader,
     ValidatedExecutableHeader,
 )
-from src.elf.section import CachedSections
-from src.elf.section_header import (
-    CachedSectionHeaders,
-    RawSectionHeaders,
-    ValidatedSectionHeaders,
-)
+from src.elf.section_header import RawSectionHeaders, ValidatedSectionHeaders
 
 
 class Forge:
@@ -65,6 +66,8 @@ class Forge:
                         PltCommand(sections),
                         InitCommand(sections),
                         FiniCommand(sections),
+                        SymtabCommand(sections),
+                        DynsymCommand(sections),
                     ],
                 )
             )

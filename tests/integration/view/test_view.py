@@ -203,8 +203,8 @@ def test_printing_full_sections(raw_data, capsys):
 def test_printing_symbol_table(raw_data, capsys):
     expected_header = "Symbol Table: .dynsym"
     expected_columns = (
-        "Idx   Value                Size  "
-        "Bind      Type      Vis         Name"
+        "Idx   Value               Size   "
+        "Bind      Type      Visibility  Name"
     )
 
     executable_header = RawExecutableHeader(raw_data)

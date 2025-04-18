@@ -125,8 +125,8 @@ class PrintableSymbolTable(Printable):
     def print(self) -> None:
         print(f"Symbol Table: {self.__name}")
         print(
-            f"{'Idx':<4}  {'Value':<18}  {'Size':>5}  {'Bind':<8}  "
-            f"{'Type':<8}  {'Vis':<10}  {'Name'}"
+            f"{'Idx':<4}  {'Value':<18}  {'Size':<5}  {'Bind':<8}  "
+            f"{'Type':<8}  {'Visibility':<3}  {'Name'}"
         )
         for index, symbol in enumerate(self.__symbol_table.symbols()):
             fields = symbol.fields()

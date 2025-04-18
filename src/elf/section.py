@@ -31,15 +31,15 @@ class Sections(ABC):
         pass  # pragma: no cover
 
 
-class StringTable(Section):
+class StringTable(ABC):
     @abstractmethod
     def name_by_index(self, sh_name: int) -> str:
         pass  # pragma: no cover
 
 
-class Disassemblable(Section):
+class Disassembly(ABC):
     @abstractmethod
-    def disassembly(self) -> list[str]:
+    def instructions(self) -> list[str]:
         pass  # pragma: no cover
 
 
@@ -131,7 +131,7 @@ class Symbol(ABC):
         pass  # pragma: no cover
 
 
-class SymbolTable(Section):
+class SymbolTable(ABC):
     _ENTRY_SIZE = 24
 
     @abstractmethod
@@ -174,19 +174,10 @@ class RawStringTable(StringTable):
         self.__origin = origin
 
     def name_by_index(self, sh_name: int) -> str:
-        data = self.data()
+        data = self.__origin.data()
         return data[
             sh_name : data.find(b"\x00", sh_name)  # noqa: E203
-        ].decode("utf-8", errors="replace")
-
-    def header(self) -> dict:
-        return self.__origin.header()  # pragma: no cover
-
-    def data(self) -> bytes:
-        return self.__origin.data()
-
-    def name(self) -> str:
-        return self.__origin.name()  # pragma: no cover
+        ].decode("ascii")
 
 
 class RawSymbol(Symbol):
@@ -270,25 +261,16 @@ class ValidatedSymbol(Symbol):
 
 
 class RawSymbolTable(SymbolTable):
-    def __init__(self, origin: Section, string_table: StringTable):
-        self.__origin = origin
+    def __init__(self, section: Section, string_table: StringTable):
+        self.__section = section
         self.__string_table = string_table
 
     def symbols(self) -> list[Symbol]:
-        data = self.__origin.data()
+        data = self.__section.data()
         return [
             RawSymbol(data, offset, self.__string_table)
             for offset in range(0, len(data), self._ENTRY_SIZE)
         ]
-
-    def header(self) -> dict:
-        return self.__origin.header()  # pragma: no cover
-
-    def data(self) -> bytes:
-        return self.__origin.data()  # pragma: no cover
-
-    def name(self) -> str:
-        return self.__origin.name()  # pragma: no cover
 
 
 class ValidatedSymbolTable(SymbolTable):
@@ -298,25 +280,16 @@ class ValidatedSymbolTable(SymbolTable):
     def symbols(self) -> list[Symbol]:
         return [ValidatedSymbol(symbol) for symbol in self.__origin.symbols()]
 
-    def header(self) -> dict:
-        return self.__origin.header()  # pragma: no cover
 
-    def data(self) -> bytes:
-        return self.__origin.data()  # pragma: no cover
-
-    def name(self) -> str:
-        return self.__origin.name()  # pragma: no cover
-
-
-class DisassembledSection(Disassemblable):
+class RawDisassembly(Disassembly):
     __SHF_EXECINSTR = 0x4
 
-    def __init__(self, origin: Section):
-        self.__origin = origin
+    def __init__(self, section: Section):
+        self.__section = section
         self.__cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
 
-    def disassembly(self) -> list[str]:
-        header = self.header()
+    def instructions(self) -> list[str]:
+        header = self.__section.header()
         if self.__is_executable(header):
             self.__cs.syntax = capstone.CS_OPT_SYNTAX_INTEL
             return [
@@ -326,20 +299,11 @@ class DisassembledSection(Disassemblable):
                     instruction.op_str,
                 )
                 for instruction in self.__cs.disasm(
-                    self.data(),
+                    self.__section.data(),
                     header["sh_addr"],
                 )
             ]
         raise ValueError("Section is not executable")
-
-    def header(self) -> dict:
-        return self.__origin.header()
-
-    def data(self) -> bytes:
-        return self.__origin.data()
-
-    def name(self) -> str:
-        return self.__origin.name()  # pragma: no cover
 
     def __is_executable(self, header: dict) -> bool:
         return header["sh_flags"] & self.__SHF_EXECINSTR

@@ -121,25 +121,16 @@ class CachedSymbol(Symbol):
 
 
 class CachedSymbolTable(SymbolTable):
-    def __init__(self, origin: Section, string_table: StringTable):
-        self.__origin = origin
+    def __init__(self, section: Section, string_table: StringTable):
+        self.__section = section
         self.__string_table = string_table
 
     def symbols(self) -> list[Symbol]:
-        data = self.__origin.data()
+        data = self.__section.data()
         return [
             CachedSymbol(RawSymbol(data, offset, self.__string_table))
             for offset in range(0, len(data), self._ENTRY_SIZE)
         ]
-
-    def header(self) -> dict:
-        return self.__origin.header()  # pragma: no cover
-
-    def data(self) -> bytes:
-        return self.__origin.data()  # pragma: no cover
-
-    def name(self) -> str:
-        return self.__origin.name()  # pragma: no cover
 
 
 class CachedSections(Sections):

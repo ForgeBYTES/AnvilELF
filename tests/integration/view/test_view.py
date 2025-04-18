@@ -4,7 +4,7 @@ import pytest
 
 from src.elf.executable_header import RawExecutableHeader
 from src.elf.section import (
-    DisassembledSection,
+    RawDisassembly,
     RawSection,
     RawSections,
     RawStringTable,
@@ -12,7 +12,7 @@ from src.elf.section import (
 )
 from src.elf.section_header import RawSectionHeaders
 from src.view.view import (
-    PrintableDisassemblable,
+    PrintableDisassembly,
     PrintableExecutableHeader,
     PrintableSection,
     PrintableSections,
@@ -218,7 +218,8 @@ def test_printing_symbol_table(raw_data, capsys):
         RawSymbolTable(
             sections.find(".dynsym"),
             RawStringTable(sections.find(".dynstr")),
-        )
+        ),
+        ".dynsym",
     ).print()
 
     output = capsys.readouterr().out.splitlines()
@@ -268,8 +269,8 @@ def test_printing_disassembly(raw_data, capsys):
         executable_header,
     )
 
-    PrintableDisassemblable(
-        DisassembledSection(sections.find(".text")),
+    PrintableDisassembly(
+        RawDisassembly(sections.find(".text")),
     ).print()
 
     assert capsys.readouterr().out.startswith(expected_output)

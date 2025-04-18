@@ -3,14 +3,14 @@ from abc import ABC, abstractmethod
 
 from src.elf.executable_header import ExecutableHeader
 from src.elf.section import (
-    DisassembledSection,
+    RawDisassembly,
     RawStringTable,
     RawSymbolTable,
     Sections,
     ValidatedSymbolTable,
 )
 from src.view.view import (
-    PrintableDisassemblable,
+    PrintableDisassembly,
     PrintableExecutableHeader,
     PrintableSection,
     PrintableSections,
@@ -104,8 +104,8 @@ class TextCommand(Command):
         arguments = self.__argument_parser(self.__NAME).parse_args(
             raw_arguments
         )
-        PrintableDisassemblable(
-            DisassembledSection(self.__sections.find(".text")),
+        PrintableDisassembly(
+            RawDisassembly(self.__sections.find(".text")),
             arguments.offset,
             arguments.size,
         ).print()
@@ -142,7 +142,8 @@ class StringTableCommand(Command):
                         self.__sections.find(self.__string_table_name)
                     ),
                 )
-            )
+            ),
+            self.__section_name,
         ).print()
 
 
@@ -168,8 +169,8 @@ class DisassemblyCommand(Command):
         return self.__command_name
 
     def execute(self, raw_arguments: list[str]) -> None:
-        PrintableDisassemblable(
-            DisassembledSection(self.__sections.find(self.__section_name))
+        PrintableDisassembly(
+            RawDisassembly(self.__sections.find(self.__section_name))
         ).print()
 
 

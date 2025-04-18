@@ -1,13 +1,7 @@
 from abc import ABC, abstractmethod
 
 from src.elf.executable_header import ExecutableHeader
-from src.elf.section import (
-    Disassemblable,
-    Section,
-    Sections,
-    Symbol,
-    SymbolTable,
-)
+from src.elf.section import Disassembly, Section, Sections, Symbol, SymbolTable
 
 
 class Printable(ABC):
@@ -124,11 +118,12 @@ class PrintableSections(Printable):
 
 
 class PrintableSymbolTable(Printable):
-    def __init__(self, symbol_table: SymbolTable):
+    def __init__(self, symbol_table: SymbolTable, name: str):
         self.__symbol_table = symbol_table
+        self.__name = name
 
     def print(self) -> None:
-        print(f"Symbol Table: {self.__symbol_table.name()}")
+        print(f"Symbol Table: {self.__name}")
         print(
             f"{'Idx':<4}  {'Value':<18}  {'Size':>5}  {'Bind':<8}  "
             f"{'Type':<8}  {'Vis':<10}  {'Name'}"
@@ -170,14 +165,14 @@ class PrintableSymbolTable(Printable):
         }.get(visibility, f"{visibility}")
 
 
-class PrintableDisassemblable(Printable):
+class PrintableDisassembly(Printable):
     def __init__(
         self,
-        disassemblable: Disassemblable,
+        disassembly: Disassembly,
         offset: int = 0,
         size: int = 0,
     ):
-        self.__disassemblable = disassemblable
+        self.__disassembly = disassembly
         self.__offset = offset
         self.__size = size
 
@@ -186,7 +181,7 @@ class PrintableDisassemblable(Printable):
             print(line)
 
     def __assembly(self, offset: int, size: int) -> list[str]:
-        assembly = self.__disassemblable.disassembly()
+        assembly = self.__disassembly.instructions()
         return (
             assembly[offset : offset + size]  # noqa: E203
             if size

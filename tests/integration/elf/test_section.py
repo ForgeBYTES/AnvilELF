@@ -8,7 +8,7 @@ from src.elf.cache import (
 )
 from src.elf.executable_header import RawExecutableHeader
 from src.elf.section import (
-    DisassembledSection,
+    RawDisassembly,
     RawSection,
     RawSections,
     RawStringTable,
@@ -200,9 +200,7 @@ def test_returning_text_disassembly(raw_data):
     for section in sections.all():
         if section.name() == ".text":
             assert (
-                DisassembledSection(section).disassembly()[
-                    : len(expected_output)
-                ]
+                RawDisassembly(section).instructions()[: len(expected_output)]
                 == expected_output
             )
 
@@ -219,7 +217,7 @@ def test_raising_on_disassembling_not_executable_section(raw_data):
     )
 
     with pytest.raises(ValueError, match="Section is not executable"):
-        DisassembledSection(sections.find(".bss")).disassembly()
+        RawDisassembly(sections.find(".bss")).instructions()
 
 
 @pytest.mark.parametrize(

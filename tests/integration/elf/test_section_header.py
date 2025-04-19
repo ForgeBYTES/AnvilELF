@@ -1,6 +1,5 @@
 import pytest
 
-from src.elf.cache import CachedSectionHeader
 from src.elf.executable_header import RawExecutableHeader
 from src.elf.section_header import (
     RawSectionHeader,
@@ -42,14 +41,12 @@ def raw_data(request) -> bytearray:
     "_class",
     [
         RawSectionHeader,
-        lambda raw_data, offset: CachedSectionHeader(
-            ValidatedSectionHeader(
-                RawSectionHeader(
-                    raw_data=raw_data,
-                    offset=offset,
-                ),
-                RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
-            )
+        lambda raw_data, offset: ValidatedSectionHeader(
+            RawSectionHeader(
+                raw_data=raw_data,
+                offset=offset,
+            ),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
         ),
     ],
 )
@@ -71,14 +68,12 @@ def test_returning_fields(raw_data, expected_offset, expected_data, _class):
     "_class",
     [
         RawSectionHeader,
-        lambda raw_data, offset: CachedSectionHeader(
-            ValidatedSectionHeader(
-                RawSectionHeader(
-                    raw_data=raw_data,
-                    offset=offset,
-                ),
-                RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
-            )
+        lambda raw_data, offset: ValidatedSectionHeader(
+            RawSectionHeader(
+                raw_data=raw_data,
+                offset=offset,
+            ),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
         ),
     ],
 )

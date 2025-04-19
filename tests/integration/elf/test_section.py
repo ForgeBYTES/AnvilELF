@@ -1,21 +1,25 @@
 import pytest
 
-from src.elf.cache import (
-    CachedExecutableHeader,
-    CachedSectionHeaders,
-    CachedSections,
-    CachedSymbolTable,
+from src.elf.executable_header import (
+    RawExecutableHeader,
+    ValidatedExecutableHeader,
 )
-from src.elf.executable_header import RawExecutableHeader
 from src.elf.section import (
     RawDisassembly,
     RawSection,
     RawSections,
     RawStringTable,
+    RawSymbol,
     RawSymbolTable,
+    Symbol,
+    ValidatedSymbol,
     ValidatedSymbolTable,
 )
-from src.elf.section_header import RawSectionHeader, RawSectionHeaders
+from src.elf.section_header import (
+    RawSectionHeader,
+    RawSectionHeaders,
+    ValidatedSectionHeaders,
+)
 
 
 @pytest.fixture
@@ -32,12 +36,12 @@ def raw_data(request) -> bytearray:
             RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
             RawExecutableHeader(raw_data),
         ),
-        lambda raw_data: CachedSections(
+        lambda raw_data: RawSections(
             raw_data,
-            CachedSectionHeaders(
+            ValidatedSectionHeaders(
                 RawSectionHeaders(raw_data, RawExecutableHeader(raw_data))
             ),
-            CachedExecutableHeader(RawExecutableHeader(raw_data)),
+            ValidatedExecutableHeader(RawExecutableHeader(raw_data)),
         ),
     ],
 )
@@ -99,12 +103,12 @@ def test_returning_section_names_on_stripped_binary(raw_data):
             RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
             RawExecutableHeader(raw_data),
         ),
-        lambda raw_data: CachedSections(
+        lambda raw_data: RawSections(
             raw_data,
-            CachedSectionHeaders(
+            ValidatedSectionHeaders(
                 RawSectionHeaders(raw_data, RawExecutableHeader(raw_data))
             ),
-            CachedExecutableHeader(RawExecutableHeader(raw_data)),
+            ValidatedExecutableHeader(RawExecutableHeader(raw_data)),
         ),
     ],
 )
@@ -123,12 +127,12 @@ def test_finding_section(raw_data, sections):
             RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
             RawExecutableHeader(raw_data),
         ),
-        lambda raw_data: CachedSections(
+        lambda raw_data: RawSections(
             raw_data,
-            CachedSectionHeaders(
+            ValidatedSectionHeaders(
                 RawSectionHeaders(raw_data, RawExecutableHeader(raw_data))
             ),
-            CachedExecutableHeader(RawExecutableHeader(raw_data)),
+            ValidatedExecutableHeader(RawExecutableHeader(raw_data)),
         ),
     ],
 )
@@ -257,12 +261,75 @@ def test_returning_symbol_table(raw_data):
     assert symbol.visibility() == expected_visibility
     assert symbol.bind() == expected_bind
 
-    cached_symbol = CachedSymbolTable(
-        symtab, RawStringTable(strtab)
-    ).symbols()[-1]
 
-    assert cached_symbol.name() == expected_name
-    assert cached_symbol.fields() == expected_fields
-    assert cached_symbol.type() == expected_type
-    assert cached_symbol.visibility() == expected_visibility
-    assert cached_symbol.bind() == expected_bind
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_symbol_change_reflects_in_raw_data(raw_data):
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    symtab = sections.find(".symtab")
+    strtab = sections.find(".strtab")
+
+    symbol = ValidatedSymbol(
+        RawSymbolTable(symtab, RawStringTable(strtab)).symbols()[1]
+    )
+
+    fields = symbol.fields()
+
+    assert fields["st_info"] != (Symbol.STB_GLOBAL << 4) | Symbol.STT_FUNC
+
+    fields["st_info"] = (Symbol.STB_GLOBAL << 4) | Symbol.STT_FUNC
+
+    symbol.change(fields)
+
+    symbol = RawSymbolTable(symtab, RawStringTable(strtab)).symbols()[1]
+    assert symbol.fields()["st_info"] == fields["st_info"]
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_returning_fields_of_unprocessable_binary(raw_data):
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    with pytest.raises(ValueError, match="Unable to process data"):
+        RawSymbol(
+            memoryview(bytearray(b"unprocessable data")),
+            24,
+            RawStringTable(sections.find(".symtab")),
+        ).fields()
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_changing_fields_with_missing_field(raw_data):
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    symbol = RawSymbolTable(
+        sections.find(".symtab"), RawStringTable(sections.find(".strtab"))
+    ).symbols()[1]
+
+    fields = symbol.fields()
+    fields["st_info"] = (Symbol.STB_GLOBAL << 4) | Symbol.STT_FUNC
+
+    del fields["st_value"]
+
+    with pytest.raises(ValueError, match="Unable to process data"):
+        symbol.change(fields)

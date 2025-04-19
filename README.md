@@ -45,6 +45,11 @@ anvil> init
 # Disassemble .fini section
 anvil> fini
 
+# Show .symtab symbol table
+anvil> symtab
+# Show .dynsym symbol table
+anvil> dynsym
+
 # Exit the shell
 anvil> exit
 ```

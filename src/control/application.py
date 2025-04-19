@@ -14,46 +14,25 @@ from src.control.command_line import (
     HistoricalCommandLine,
     InteractiveCommandLine,
 )
-from src.control.input import ArgvFile, HandledArgvFile
-from src.elf.cache import (
-    CachedExecutableHeader,
-    CachedSectionHeaders,
-    CachedSections,
-)
-from src.elf.executable_header import (
-    RawExecutableHeader,
-    ValidatedExecutableHeader,
-)
-from src.elf.section_header import RawSectionHeaders, ValidatedSectionHeaders
+from src.elf.binary import RawBinary, ValidatedBinary
 
 
-class Forge:
+class Application:
+    __BINARY_PATH = 1
+
     def __init__(self, argv: list, intro: str, usage: str, hint: str):
         self.__argv = argv
         self.__intro = intro
         self.__usage = usage
         self.__hint = hint
 
-    def build(self) -> CommandLine:
-        print(self.__intro)
+    def command_line(self) -> CommandLine:
         try:
-            raw_data = HandledArgvFile(
-                ArgvFile(self.__argv), self.__usage
-            ).raw_data()
+            print(self.__intro)
 
-            executable_header = CachedExecutableHeader(
-                ValidatedExecutableHeader(RawExecutableHeader(raw_data))
-            )
-            section_headers = CachedSectionHeaders(
-                ValidatedSectionHeaders(
-                    RawSectionHeaders(raw_data, executable_header)
-                )
-            )
-            sections = CachedSections(
-                raw_data,
-                section_headers,
-                executable_header,
-            )
+            executable_header, section_headers, sections = ValidatedBinary(
+                RawBinary(self.__binary_path(self.__argv))
+            ).components()
 
             return HistoricalCommandLine(
                 InteractiveCommandLine(
@@ -73,4 +52,11 @@ class Forge:
             )
         except ValueError as error:
             print(error)
+            raise SystemExit(1)
+
+    def __binary_path(self, argv: list) -> str:
+        try:
+            return argv[self.__BINARY_PATH]
+        except IndexError:
+            print(self.__usage)
             raise SystemExit(1)

@@ -13,7 +13,7 @@ class Section(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
-    def data(self) -> bytes:
+    def raw_data(self) -> memoryview:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -44,6 +44,8 @@ class Disassembly(ABC):
 
 
 class Symbol(ABC):
+    _ENTRY_SIZE = 24
+
     _FIELDS = [
         "st_name",
         "st_info",
@@ -53,65 +55,59 @@ class Symbol(ABC):
         "st_size",
     ]
 
-    _STB_LOCAL = 0
-    _STB_GLOBAL = 1
-    _STB_WEAK = 2
-    _STB_LOOS = 10
-    _STB_HIOS = 12
-    _STB_LOPROC = 13
-    _STB_HIPROC = 15
+    STB_LOCAL = 0
+    STB_GLOBAL = 1
+    STB_WEAK = 2
+    STB_LOOS = 10
+    STB_HIOS = 12
+    STB_LOPROC = 13
+    STB_HIPROC = 15
 
     # fmt: off
     _BINDS = [
-        _STB_LOCAL, _STB_GLOBAL, _STB_WEAK, _STB_LOOS,
-        _STB_HIOS, _STB_LOPROC, _STB_HIPROC,
+        STB_LOCAL, STB_GLOBAL, STB_WEAK, STB_LOOS,
+        STB_HIOS, STB_LOPROC, STB_HIPROC,
     ]
     # fmt: on
 
-    _STT_NOTYPE = 0
-    _STT_OBJECT = 1
-    _STT_FUNC = 2
-    _STT_SECTION = 3
-    _STT_FILE = 4
-    _STT_COMMON = 5
-    _STT_TLS = 6
-    _STT_LOOS = 10
-    _STT_HIOS = 12
-    _STT_LOPROC = 13
-    _STT_HIPROC = 15
+    STT_NOTYPE = 0
+    STT_OBJECT = 1
+    STT_FUNC = 2
+    STT_SECTION = 3
+    STT_FILE = 4
+    STT_COMMON = 5
+    STT_TLS = 6
+    STT_LOOS = 10
+    STT_HIOS = 12
+    STT_LOPROC = 13
+    STT_HIPROC = 15
 
     # fmt: off
     _TYPES = [
-        _STT_NOTYPE, _STT_OBJECT, _STT_FUNC, _STT_SECTION, _STT_FILE,
-        _STT_COMMON, _STT_TLS, _STT_LOOS, _STT_HIOS, _STT_LOPROC,
-        _STT_HIPROC,
+        STT_NOTYPE, STT_OBJECT, STT_FUNC, STT_SECTION, STT_FILE,
+        STT_COMMON, STT_TLS, STT_LOOS, STT_HIOS, STT_LOPROC,
+        STT_HIPROC,
     ]
     # fmt: on
 
-    _STV_DEFAULT = 0
-    _STV_INTERNAL = 1
-    _STV_HIDDEN = 2
-    _STV_PROTECTED = 3
+    STV_DEFAULT = 0
+    STV_INTERNAL = 1
+    STV_HIDDEN = 2
+    STV_PROTECTED = 3
 
     _VISIBILITIES = [
-        _STV_DEFAULT,
-        _STV_INTERNAL,
-        _STV_HIDDEN,
-        _STV_PROTECTED,
-    ]
-
-    _SHN_UNDEF = 0
-    _SHN_ABS = 0xFFF1
-    _SHN_COMMON = 0xFFF2
-
-    _SPECIAL_SHNDX = [
-        _SHN_UNDEF,
-        _SHN_ABS,
-        _SHN_COMMON,
+        STV_DEFAULT,
+        STV_INTERNAL,
+        STV_HIDDEN,
+        STV_PROTECTED,
     ]
 
     @abstractmethod
     def fields(self) -> dict:
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def change(self, fields: dict) -> None:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -153,19 +149,20 @@ class RawSection(Section):
     def header(self) -> dict:
         return self.__section_header.fields()
 
-    def data(self) -> bytes:
+    def raw_data(self) -> memoryview:
         fields = self.__section_header.fields()
-        return self.__raw_data[
+        return memoryview(self.__raw_data)[
             fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
             + fields["sh_size"]
         ]
 
     def name(self) -> str:
-        if self.__shstrtab is None:
-            return str(self.__section_header.fields()["sh_name"])
-
-        return self.__shstrtab.name_by_index(
-            self.__section_header.fields()["sh_name"]
+        return (
+            str(self.__section_header.fields()["sh_name"])
+            if self.__shstrtab is None
+            else self.__shstrtab.name_by_index(
+                self.__section_header.fields()["sh_name"]
+            )
         )
 
 
@@ -174,31 +171,80 @@ class RawStringTable(StringTable):
         self.__origin = origin
 
     def name_by_index(self, sh_name: int) -> str:
-        data = self.__origin.data()
+        data = self.__origin.raw_data().tobytes()
         return data[
             sh_name : data.find(b"\x00", sh_name)  # noqa: E203
         ].decode("ascii")
 
 
+class RawSections(Sections):
+    def __init__(
+        self,
+        raw_data: bytearray,
+        section_headers: SectionHeaders,
+        executable_header: ExecutableHeader,
+    ):
+        self.__raw_data = raw_data
+        self.__section_headers = section_headers
+        self.__executable_header = executable_header
+
+    def all(self) -> list[Section]:
+        headers = self.__section_headers.all()
+        e_shstrndx = self.__executable_header.fields()["e_shstrndx"]
+        return [
+            RawSection(
+                self.__raw_data,
+                header,
+                RawStringTable(
+                    RawSection(self.__raw_data, headers[e_shstrndx])
+                ),
+            )
+            for header in headers
+        ]
+
+    def find(self, name: str) -> Section:
+        for section in self.all():
+            if section.name() == name:
+                return section
+        raise ValueError(f"Section '{name}' not found")  # pragma: no cover
+
+
 class RawSymbol(Symbol):
     __STRUCT_FORMAT = "<IBBHQQ"
 
-    def __init__(self, data: bytes, offset: int, string_table: StringTable):
-        self.__data = data
+    def __init__(
+        self, raw_data: memoryview, offset: int, string_table: StringTable
+    ):
+        self.__raw_data = raw_data
         self.__offset = offset
         self.__string_table = string_table
 
     def fields(self) -> dict:
-        return dict(
-            zip(
-                self._FIELDS,
-                struct.unpack_from(
-                    self.__STRUCT_FORMAT,
-                    self.__data,
-                    self.__offset,
-                ),
+        try:
+            return dict(
+                zip(
+                    self._FIELDS,
+                    struct.unpack_from(
+                        self.__STRUCT_FORMAT,
+                        self.__raw_data,
+                        self.__offset,
+                    ),
+                )
             )
-        )
+        except struct.error:
+            raise ValueError("Unable to process data")
+
+    def change(self, fields: dict) -> None:
+        try:
+            _struct = struct.pack(
+                self.__STRUCT_FORMAT,
+                *(fields[field] for field in self._FIELDS),
+            )
+            self.__raw_data[
+                self.__offset : self.__offset + self._ENTRY_SIZE  # noqa: E203
+            ] = _struct
+        except (KeyError, struct.error):
+            raise ValueError("Unable to process data")
 
     def name(self) -> str:
         return self.__string_table.name_by_index(self.fields()["st_name"])
@@ -221,6 +267,9 @@ class ValidatedSymbol(Symbol):
         fields = self.__origin.fields()
         self.__validate(fields)
         return fields
+
+    def change(self, fields: dict) -> None:
+        return self.__origin.change(fields)
 
     def name(self) -> str:
         return self.__origin.name()
@@ -266,7 +315,7 @@ class RawSymbolTable(SymbolTable):
         self.__string_table = string_table
 
     def symbols(self) -> list[Symbol]:
-        data = self.__section.data()
+        data = self.__section.raw_data()
         return [
             RawSymbol(data, offset, self.__string_table)
             for offset in range(0, len(data), self._ENTRY_SIZE)
@@ -299,7 +348,7 @@ class RawDisassembly(Disassembly):
                     instruction.op_str,
                 )
                 for instruction in self.__cs.disasm(
-                    self.__section.data(),
+                    self.__section.raw_data(),
                     header["sh_addr"],
                 )
             ]
@@ -310,35 +359,3 @@ class RawDisassembly(Disassembly):
 
     def __instruction(self, address: str, mnemonic: str, op: str):
         return f"{address:08x}: {mnemonic} {op}".rstrip()
-
-
-class RawSections(Sections):
-    def __init__(
-        self,
-        raw_data: bytearray,
-        section_headers: SectionHeaders,
-        executable_header: ExecutableHeader,
-    ):
-        self.__raw_data = raw_data
-        self.__section_headers = section_headers
-        self.__executable_header = executable_header
-
-    def all(self) -> list[Section]:
-        headers = self.__section_headers.all()
-        e_shstrndx = self.__executable_header.fields()["e_shstrndx"]
-        return [
-            RawSection(
-                self.__raw_data,
-                header,
-                RawStringTable(
-                    RawSection(self.__raw_data, headers[e_shstrndx])
-                ),
-            )
-            for header in headers
-        ]
-
-    def find(self, name: str) -> Section:
-        for section in self.all():
-            if section.name() == name:
-                return section
-        raise ValueError(f"Section '{name}' not found")  # pragma: no cover

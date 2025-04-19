@@ -391,7 +391,7 @@ def test_raising_on_changing_symbol_with_invalid_value(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_changing_shstrtab_name(raw_data: bytearray) -> None:
+def test_replacing_shstrtab(raw_data: bytearray) -> None:
     data = (
         b"\x00.shstrtab\x00.interp\x00.note.gnu.property\x00"
         b".note.gnu.build-id\x00.note.ABI-tag\x00.gnu.hash\x00"

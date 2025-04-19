@@ -1,4 +1,7 @@
+from typing import Callable
+
 import pytest
+from _pytest.fixtures import FixtureRequest
 
 from src.elf.executable_header import (
     RawExecutableHeader,
@@ -23,7 +26,7 @@ from src.elf.section_header import (
 
 
 @pytest.fixture
-def raw_data(request) -> bytearray:
+def raw_data(request: FixtureRequest) -> bytearray:
     with open(request.param, "rb") as binary:
         return bytearray(binary.read())
 
@@ -48,7 +51,9 @@ def raw_data(request) -> bytearray:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_returning_section_names(raw_data, sections):
+def test_returning_section_names(
+    raw_data: bytearray, sections: Callable[[bytearray], RawSections]
+) -> None:
     # fmt: off
     expected_section_names = [
         "", ".interp", ".note.gnu.property", ".note.gnu.build-id",
@@ -71,7 +76,9 @@ def test_returning_section_names(raw_data, sections):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_returning_section_names_on_stripped_binary(raw_data):
+def test_returning_section_names_on_stripped_binary(
+    raw_data: bytearray,
+) -> None:
     # fmt: off
     expected_section_names = [
         "", ".interp", ".note.gnu.property", ".note.gnu.build-id",
@@ -115,7 +122,9 @@ def test_returning_section_names_on_stripped_binary(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_finding_section(raw_data, sections):
+def test_finding_section(
+    raw_data: bytearray, sections: Callable[[bytearray], RawSections]
+) -> None:
     assert sections(raw_data).find(".text").name() == ".text"
 
 
@@ -139,7 +148,9 @@ def test_finding_section(raw_data, sections):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_finding_nonexistent_section(raw_data, sections):
+def test_raising_on_finding_nonexistent_section(
+    raw_data: bytearray, sections: Callable[[bytearray], RawSections]
+) -> None:
     with pytest.raises(ValueError, match="Section '.nonexistent' not found"):
         assert sections(raw_data).find(".nonexistent")
 
@@ -147,7 +158,9 @@ def test_raising_on_finding_nonexistent_section(raw_data, sections):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_returning_name_offset_if_shstrtab_is_not_present(raw_data):
+def test_returning_name_offset_if_shstrtab_is_not_present(
+    raw_data: bytearray,
+) -> None:
     expected_string_offset = "27"
 
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
@@ -161,7 +174,7 @@ def test_returning_name_offset_if_shstrtab_is_not_present(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_returning_shstrtab_name_by_index(raw_data):
+def test_returning_shstrtab_name_by_index(raw_data: bytearray) -> None:
     executable_header = RawExecutableHeader(raw_data)
     section_headers = RawSectionHeaders(raw_data, executable_header)
 
@@ -177,7 +190,7 @@ def test_returning_shstrtab_name_by_index(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_returning_text_disassembly(raw_data):
+def test_returning_text_disassembly(raw_data: bytearray) -> None:
     expected_output = [
         "00001060: endbr64",
         "00001064: xor ebp, ebp",
@@ -212,7 +225,9 @@ def test_returning_text_disassembly(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_disassembling_not_executable_section(raw_data):
+def test_raising_on_disassembling_not_executable_section(
+    raw_data: bytearray,
+) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(
         raw_data,
@@ -227,7 +242,7 @@ def test_raising_on_disassembling_not_executable_section(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_returning_symbol_table(raw_data):
+def test_returning_symbol_table(raw_data: bytearray) -> None:
     expected_name = "_init"
     expected_fields = {
         "st_name": 473,
@@ -251,7 +266,7 @@ def test_returning_symbol_table(raw_data):
     symtab = sections.find(".symtab")
     strtab = sections.find(".strtab")
 
-    symbol = ValidatedSymbolTable(
+    symbol: Symbol = ValidatedSymbolTable(
         RawSymbolTable(symtab, RawStringTable(strtab))
     ).symbols()[-1]
 
@@ -265,7 +280,7 @@ def test_returning_symbol_table(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_symbol_change_reflects_in_raw_data(raw_data):
+def test_symbol_change_reflects_in_raw_data(raw_data: bytearray) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(
         raw_data,
@@ -276,26 +291,28 @@ def test_symbol_change_reflects_in_raw_data(raw_data):
     symtab = sections.find(".symtab")
     strtab = sections.find(".strtab")
 
-    symbol = ValidatedSymbol(
+    validated_symbol = ValidatedSymbol(
         RawSymbolTable(symtab, RawStringTable(strtab)).symbols()[1]
     )
 
-    fields = symbol.fields()
+    fields = validated_symbol.fields()
 
     assert fields["st_info"] != (Symbol.STB_GLOBAL << 4) | Symbol.STT_FUNC
 
     fields["st_info"] = (Symbol.STB_GLOBAL << 4) | Symbol.STT_FUNC
 
-    symbol.change(fields)
+    validated_symbol.change(fields)
 
-    symbol = RawSymbolTable(symtab, RawStringTable(strtab)).symbols()[1]
-    assert symbol.fields()["st_info"] == fields["st_info"]
+    raw_symbol = RawSymbolTable(symtab, RawStringTable(strtab)).symbols()[1]
+    assert raw_symbol.fields()["st_info"] == fields["st_info"]
 
 
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_returning_fields_of_unprocessable_binary(raw_data):
+def test_raising_on_returning_fields_of_unprocessable_binary(
+    raw_data: bytearray,
+) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(
         raw_data,
@@ -314,7 +331,9 @@ def test_raising_on_returning_fields_of_unprocessable_binary(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_changing_fields_with_missing_field(raw_data):
+def test_raising_on_changing_fields_with_missing_field(
+    raw_data: bytearray,
+) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(
         raw_data,
@@ -348,8 +367,8 @@ def test_raising_on_changing_fields_with_missing_field(raw_data):
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_symbol_with_invalid_value(
-    raw_data, field, invalid_value, error
-):
+    raw_data: bytearray, field: str, invalid_value: int, error: str
+) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(
         raw_data,

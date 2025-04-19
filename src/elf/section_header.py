@@ -85,11 +85,11 @@ class SectionHeader(ABC):
     # fmt: on
 
     @abstractmethod
-    def fields(self) -> dict:
+    def fields(self) -> dict[str, int]:
         pass  # pragma: no cover
 
     @abstractmethod
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict[str, int]) -> None:
         pass  # pragma: no cover
 
 
@@ -108,7 +108,7 @@ class RawSectionHeader(SectionHeader):
         self.__raw_data = raw_data
         self.__offset = offset
 
-    def fields(self) -> dict:
+    def fields(self) -> dict[str, int]:
         try:
             return dict(
                 zip(
@@ -125,7 +125,7 @@ class RawSectionHeader(SectionHeader):
         except struct.error:
             raise ValueError("Unable to process data")
 
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict[str, int]) -> None:
         try:
             _struct = struct.pack(
                 self.__STRUCT_FORMAT,
@@ -165,18 +165,18 @@ class ValidatedSectionHeader(SectionHeader):
         self.__origin = origin
         self.__section_headers = section_headers
 
-    def fields(self) -> dict:
+    def fields(self) -> dict[str, int]:
         fields = self.__origin.fields()
         self.__validate(fields, self.__section_headers)
         return fields
 
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict[str, int]) -> None:
         self.__validate(fields, self.__section_headers)
         self.__origin.change(fields)
 
     def __validate(
         self,
-        fields: dict,
+        fields: dict[str, int],
         section_headers: SectionHeaders,
     ) -> None:
         for field, value in fields.items():
@@ -226,7 +226,9 @@ class ValidatedSectionHeader(SectionHeader):
     def __is_power_of_two(self, value: int) -> bool:
         return (value & (value - 1)) == 0
 
-    def __is_sh_addr_aligned(self, sh_addr: int, fields: dict) -> bool:
+    def __is_sh_addr_aligned(
+        self, sh_addr: int, fields: dict[str, int]
+    ) -> bool:
         if fields["sh_flags"] & self._SHF_ALLOC:
             return (
                 sh_addr % fields["sh_addralign"] == 0
@@ -238,7 +240,7 @@ class ValidatedSectionHeader(SectionHeader):
     def __is_sh_link_valid(
         self,
         index: int,
-        fields: dict,
+        fields: dict[str, int],
         section_headers: list[SectionHeader],
     ) -> bool:
         links = {
@@ -265,7 +267,7 @@ class ValidatedSectionHeader(SectionHeader):
     def __is_sh_info_valid(
         self,
         value: int,
-        fields: dict,
+        fields: dict[str, int],
     ) -> bool:
         return (
             value == 0
@@ -284,7 +286,7 @@ class ValidatedSectionHeader(SectionHeader):
     def __is_sh_entsize_valid(
         self,
         value: int,
-        fields: dict,
+        fields: dict[str, int],
     ) -> bool:
         return (
             value > 0
@@ -303,7 +305,7 @@ class ValidatedSectionHeader(SectionHeader):
             else True
         )
 
-    def __validate_field_exists(self, field: str, fields: list):
+    def __validate_field_exists(self, field: str, fields: list[str]) -> None:
         if field not in fields:
             raise ValueError(f"Unknown field {field}")
 

@@ -1,6 +1,8 @@
 import re
 
 import pytest
+from _pytest.capture import CaptureFixture
+from _pytest.fixtures import FixtureRequest
 
 from src.elf.executable_header import RawExecutableHeader
 from src.elf.section import (
@@ -21,7 +23,7 @@ from src.view.view import (
 
 
 @pytest.fixture
-def raw_data(request) -> bytearray:
+def raw_data(request: FixtureRequest) -> bytearray:
     with open(request.param, "rb") as binary:
         return bytearray(binary.read())
 
@@ -29,7 +31,9 @@ def raw_data(request) -> bytearray:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_printing_executable_header(raw_data, capsys):
+def test_printing_executable_header(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     expected_output = (
         "Executable Header:\n"
         "  Magic: 7f 45 4c 46\n"
@@ -53,7 +57,9 @@ def test_printing_executable_header(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_printing_section(raw_data, capsys):
+def test_printing_section(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     expected_output = (
         "Section Header:\n"
         "  Name: 17 (index in .shstrtab)\n"
@@ -90,7 +96,9 @@ def test_printing_section(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_printing_full_section(raw_data, capsys):
+def test_printing_full_section(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     patterns = [
         r"Section Header:\n\s+Name:\s+\d+ \(index in \.shstrtab\)",
         r"Type:\s+\d+",
@@ -128,7 +136,9 @@ def test_printing_full_section(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_printing_sections(raw_data, capsys):
+def test_printing_sections(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     # fmt: off
     expected_output = (
         " [0] \n [1] .interp\n [2] .note.gnu.property\n"
@@ -158,7 +168,9 @@ def test_printing_sections(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_printing_full_sections(raw_data, capsys):
+def test_printing_full_sections(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(
         raw_data,
@@ -200,7 +212,9 @@ def test_printing_full_sections(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_printing_symbol_table(raw_data, capsys):
+def test_printing_symbol_table(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     expected_header = "Symbol Table: .dynsym"
     expected_columns = (
         "Idx   Value               Size   "
@@ -245,7 +259,9 @@ def test_printing_symbol_table(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_printing_disassembly(raw_data, capsys):
+def test_printing_disassembly(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     expected_output = (
         "00001060: endbr64\n"
         "00001064: xor ebp, ebp\n"

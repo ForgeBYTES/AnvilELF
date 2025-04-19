@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from _pytest.capture import CaptureFixture
 
 from src.control.command import Command
 from src.control.command_line import (
@@ -10,7 +11,7 @@ from src.control.command_line import (
 
 
 class ValidCommand(Command):
-    def name(self):
+    def name(self) -> str:
         return "valid"
 
     def execute(self, args: list[str]) -> None:
@@ -18,14 +19,14 @@ class ValidCommand(Command):
 
 
 class FailingCommand(Command):
-    def name(self):
+    def name(self) -> str:
         return "failing"
 
     def execute(self, args: list[str]) -> None:
         raise ValueError("I am failing!")
 
 
-def test_help_command(capsys):
+def test_help_command(capsys: CaptureFixture[str]) -> None:
     expected_output = (
         "header                      Show executable header\n"
         "sections[--full]            List all sections\n"
@@ -41,13 +42,13 @@ def test_help_command(capsys):
     assert expected_output in capsys.readouterr().out
 
 
-def test_empty_input():
+def test_empty_input() -> None:
     with patch("builtins.input", side_effect=["", "exit"]):
         with pytest.raises(SystemExit):
             InteractiveCommandLine("", []).run()
 
 
-def test_valid_command_execution(capsys):
+def test_valid_command_execution(capsys: CaptureFixture[str]) -> None:
     with patch("builtins.input", side_effect=["valid", "exit"]):
         with pytest.raises(SystemExit):
             InteractiveCommandLine("", [ValidCommand()]).run()
@@ -55,7 +56,7 @@ def test_valid_command_execution(capsys):
     assert "I am executed!" in capsys.readouterr().out
 
 
-def test_unknown_command_full_message(capsys):
+def test_unknown_command_full_message(capsys: CaptureFixture[str]) -> None:
     with patch("builtins.input", side_effect=["unknown", "exit"]):
         with pytest.raises(SystemExit):
             InteractiveCommandLine("Hint", [ValidCommand()]).run()
@@ -65,7 +66,7 @@ def test_unknown_command_full_message(capsys):
     assert "Type 'help' to see available commands" in output
 
 
-def test_failing_command_execution(capsys):
+def test_failing_command_execution(capsys: CaptureFixture[str]) -> None:
     with patch("builtins.input", side_effect=["failing", "exit"]):
         with pytest.raises(SystemExit):
             InteractiveCommandLine("", [FailingCommand()]).run()
@@ -73,7 +74,7 @@ def test_failing_command_execution(capsys):
     assert "I am failing!" in capsys.readouterr().out
 
 
-def test_historical_command_execution(capsys):
+def test_historical_command_execution(capsys: CaptureFixture[str]) -> None:
     with patch("builtins.input", side_effect=["valid", "exit"]):
         with pytest.raises(SystemExit):
             HistoricalCommandLine(

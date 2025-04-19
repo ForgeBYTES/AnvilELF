@@ -1,6 +1,8 @@
 import re
 
 import pytest
+from _pytest.capture import CaptureFixture
+from _pytest.fixtures import FixtureRequest
 
 from src.control.command import (
     DynsymCommand,
@@ -18,7 +20,7 @@ from src.elf.section_header import RawSectionHeaders
 
 
 @pytest.fixture
-def raw_data(request) -> bytearray:
+def raw_data(request: FixtureRequest) -> bytearray:
     with open(request.param, "rb") as binary:
         return bytearray(binary.read())
 
@@ -26,7 +28,9 @@ def raw_data(request) -> bytearray:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_executable_header_command(raw_data, capsys):
+def test_executable_header_command(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     expected_output = (
         "Executable Header:\n"
         "  Magic: 7f 45 4c 46\n"
@@ -54,7 +58,9 @@ def test_executable_header_command(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_sections_command_with_full_flag(raw_data, capsys):
+def test_sections_command_with_full_flag(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     executable_header = RawExecutableHeader(raw_data)
 
     command = SectionsCommand(
@@ -101,7 +107,9 @@ def test_sections_command_with_full_flag(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_section_command(raw_data, capsys):
+def test_section_command(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     patterns = [
         r"Section Header:\n\s+Name:\s+\d+ \(index in \.shstrtab\)",
         r"Type:\s+\d+",
@@ -140,7 +148,9 @@ def test_section_command(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_section_command_with_full_flag(raw_data, capsys):
+def test_section_command_with_full_flag(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     patterns = [
         r"Section Header:\n\s+Name:\s+\d+ \(index in \.shstrtab\)",
         r"Type:\s+\d+",
@@ -176,7 +186,9 @@ def test_section_command_with_full_flag(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_symbol_table_command(raw_data, capsys):
+def test_symbol_table_command(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     expected_header = "Symbol Table: .dynsym"
     expected_columns = (
         "Idx   Value               Size   "
@@ -220,7 +232,9 @@ def test_symbol_table_command(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_text_command(raw_data, capsys):
+def test_text_command(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     expected_output = (
         "00001060: endbr64\n"
         "00001064: xor ebp, ebp\n"
@@ -257,7 +271,7 @@ def test_text_command(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_plt_command(raw_data, capsys):
+def test_plt_command(raw_data: bytearray, capsys: CaptureFixture[str]) -> None:
     expected_output = (
         "00001020: push qword ptr [rip + 0x2f72]\n"
         "00001026: bnd jmp qword ptr [rip + 0x2f73]\n"
@@ -292,7 +306,9 @@ def test_plt_command(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_init_command(raw_data, capsys):
+def test_init_command(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     expected_output = (
         "00001000: endbr64\n"
         "00001004: sub rsp, 8\n"
@@ -324,7 +340,9 @@ def test_init_command(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_fini_command(raw_data, capsys):
+def test_fini_command(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
     expected_output = (
         "00001178: endbr64\n"
         "0000117c: sub rsp, 8\n"
@@ -352,7 +370,7 @@ def test_fini_command(raw_data, capsys):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_invalid_argument(raw_data):
+def test_raising_on_invalid_argument(raw_data: bytearray) -> None:
     with pytest.raises(ValueError, match="Invalid arguments: "):
         executable_header = RawExecutableHeader(raw_data)
 
@@ -368,7 +386,9 @@ def test_raising_on_invalid_argument(raw_data):
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_section_command_raising_on_nonexistent_section(raw_data):
+def test_section_command_raising_on_nonexistent_section(
+    raw_data: bytearray,
+) -> None:
     with pytest.raises(ValueError, match="Section '.nonexistent' not found"):
         executable_header = RawExecutableHeader(raw_data)
 

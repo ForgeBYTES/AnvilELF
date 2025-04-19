@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from typing import Callable, Generator
 from unittest.mock import patch
 
 import pytest
@@ -11,7 +12,7 @@ from src.elf.section_header import SectionHeaders
 
 
 @pytest.fixture
-def prepare_temporary_binaries():
+def prepare_temporary_binaries() -> Generator[None, None, None]:
     original_path = Path("tests/samples/binaries")
     temporary_path = Path("tests/samples/temporary_binaries")
 
@@ -34,8 +35,9 @@ def prepare_temporary_binaries():
     ],
 )
 def test_changing_symbol_type_and_saving_binary(
-    prepare_temporary_binaries, binary
-):
+    prepare_temporary_binaries: Generator[None, None, None],
+    binary: Callable[[str], RawBinary | ValidatedBinary],
+) -> None:
     path = "tests/samples/temporary_binaries/binary"
     symbol_type = (Symbol.STB_GLOBAL << 4) | Symbol.STT_FUNC
     original_binary = binary(path)
@@ -75,7 +77,9 @@ def test_changing_symbol_type_and_saving_binary(
     assert duplicate_symbol.fields()["st_info"] == symbol_type
 
 
-def test_raising_on_saving_binary(prepare_temporary_binaries):
+def test_raising_on_saving_binary(
+    prepare_temporary_binaries: Generator[None, None, None],
+) -> None:
     with patch("builtins.open", side_effect=OSError):
         with pytest.raises(ValueError, match="Failed to save binary"):
             RawBinary("tests/samples/temporary_binaries/binary").save()

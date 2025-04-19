@@ -1,4 +1,7 @@
+from typing import Any, Callable
+
 import pytest
+from _pytest.fixtures import FixtureRequest
 
 from src.elf.executable_header import (
     RawExecutableHeader,
@@ -7,7 +10,7 @@ from src.elf.executable_header import (
 
 
 @pytest.fixture
-def expected_data():
+def expected_data() -> dict[str, Any]:
     return {
         "e_ident": {
             "EI_MAG": b"\x7fELF",
@@ -35,7 +38,7 @@ def expected_data():
 
 
 @pytest.fixture
-def raw_data(request) -> bytearray:
+def raw_data(request: FixtureRequest) -> bytearray:
     with open(request.param, "rb") as binary:
         return bytearray(binary.read())
 
@@ -52,7 +55,13 @@ def raw_data(request) -> bytearray:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_returning_fields(raw_data, expected_data, _class):
+def test_returning_fields(
+    raw_data: bytearray,
+    _class: Callable[
+        [bytearray], RawExecutableHeader | ValidatedExecutableHeader
+    ],
+    expected_data: dict[str, Any],
+) -> None:
     assert _class(raw_data).fields() == expected_data
 
 
@@ -69,10 +78,12 @@ def test_returning_fields(raw_data, expected_data, _class):
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_changing_fields(
-    raw_data,
-    _class,
-    expected_data,
-):
+    raw_data: bytearray,
+    _class: Callable[
+        [bytearray], RawExecutableHeader | ValidatedExecutableHeader
+    ],
+    expected_data: dict[str, Any],
+) -> None:
     original_ei_data = 1
     original_e_type = 3
     expected_ei_data = 2
@@ -97,8 +108,8 @@ def test_changing_fields(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_fields_with_missing_field_in_expected_data(
-    raw_data, expected_data
-):
+    raw_data: bytearray, expected_data: dict[str, Any]
+) -> None:
     expected_data["sh_flags"] = 4
 
     del expected_data["e_type"]
@@ -107,7 +118,7 @@ def test_raising_on_changing_fields_with_missing_field_in_expected_data(
         RawExecutableHeader(raw_data).change(expected_data)
 
 
-def test_raising_on_returning_fields_of_unprocessable_binary():
+def test_raising_on_returning_fields_of_unprocessable_binary() -> None:
     with pytest.raises(ValueError, match="Unable to process data"):
         RawExecutableHeader(bytearray(b"unprocessable data")).fields()
 
@@ -116,9 +127,9 @@ def test_raising_on_returning_fields_of_unprocessable_binary():
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_field_with_unprocessable_data_type(
-    raw_data,
-    expected_data,
-):
+    raw_data: bytearray,
+    expected_data: dict[str, Any],
+) -> None:
     expected_data["e_type"] = "unprocessable data type"
 
     with pytest.raises(ValueError, match="Unable to process data"):
@@ -128,7 +139,7 @@ def test_raising_on_changing_field_with_unprocessable_data_type(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-32bit"], indirect=True
 )
-def test_raising_on_32bit_type(raw_data):
+def test_raising_on_32bit_type(raw_data: bytearray) -> None:
     with pytest.raises(ValueError, match="Binary must be 64-bit"):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
@@ -138,7 +149,9 @@ def test_raising_on_32bit_type(raw_data):
     ["tests/samples/binaries/binary-with-malformed-ei-data"],
     indirect=True,
 )
-def test_raising_on_getting_fields_with_malformed_ei_data(raw_data):
+def test_raising_on_getting_fields_with_malformed_ei_data(
+    raw_data: bytearray,
+) -> None:
     with pytest.raises(ValueError, match="Invalid value for EI_DATA"):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
@@ -148,7 +161,9 @@ def test_raising_on_getting_fields_with_malformed_ei_data(raw_data):
     ["tests/samples/binaries/binary-with-malformed-ei-version"],
     indirect=True,
 )
-def test_raising_on_getting_fields_with_malformed_ei_version(raw_data):
+def test_raising_on_getting_fields_with_malformed_ei_version(
+    raw_data: bytearray,
+) -> None:
     with pytest.raises(ValueError, match="Invalid value for EI_VERSION"):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
@@ -158,7 +173,9 @@ def test_raising_on_getting_fields_with_malformed_ei_version(raw_data):
     ["tests/samples/binaries/binary-with-malformed-e-type"],
     indirect=True,
 )
-def test_raising_on_getting_fields_with_malformed_e_type(raw_data):
+def test_raising_on_getting_fields_with_malformed_e_type(
+    raw_data: bytearray,
+) -> None:
     with pytest.raises(ValueError, match="Invalid value for e_type"):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
@@ -167,9 +184,9 @@ def test_raising_on_getting_fields_with_malformed_e_type(raw_data):
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_changing_invalid_field(
-    raw_data,
-    expected_data,
-):
+    raw_data: bytearray,
+    expected_data: dict[str, Any],
+) -> None:
     expected_data["invalid"] = 1
 
     with pytest.raises(ValueError, match="Unknown field invalid"):
@@ -181,7 +198,9 @@ def test_raising_on_changing_invalid_field(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_changing_invalid_e_ident_field(raw_data, expected_data):
+def test_raising_on_changing_invalid_e_ident_field(
+    raw_data: bytearray, expected_data: dict[str, Any]
+) -> None:
     expected_data["e_ident"]["invalid"] = 1
 
     with pytest.raises(ValueError, match="Unknown field invalid"):
@@ -206,12 +225,12 @@ def test_raising_on_changing_invalid_e_ident_field(raw_data, expected_data):
     ],
 )
 def test_raising_on_changing_invalid_field_values(
-    raw_data,
-    expected_data,
-    field,
-    invalid_value,
-    error_message,
-):
+    raw_data: bytearray,
+    expected_data: dict[str, Any],
+    field: str,
+    invalid_value: int,
+    error_message: str,
+) -> None:
     expected_data[field] = invalid_value
 
     with pytest.raises(ValueError, match=error_message):
@@ -232,12 +251,12 @@ def test_raising_on_changing_invalid_field_values(
     ],
 )
 def test_raising_on_changing_invalid_e_ident_field_values(
-    raw_data,
-    expected_data,
-    field,
-    invalid_value,
-    error_message,
-):
+    raw_data: bytearray,
+    expected_data: dict[str, Any],
+    field: str,
+    invalid_value: bytes | int,
+    error_message: str,
+) -> None:
     expected_data["e_ident"][field] = invalid_value
 
     with pytest.raises(ValueError, match=error_message):

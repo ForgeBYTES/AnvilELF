@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from src.elf.executable_header import ExecutableHeader
 from src.elf.section import Disassembly, Section, Sections, Symbol, SymbolTable
@@ -32,7 +33,7 @@ class PrintableExecutableHeader(Printable):
             sep="\n",
         )
 
-    def __magic(self, fields: dict) -> str:
+    def __magic(self, fields: dict[str, Any]) -> str:
         return " ".join(f"{byte:02x}" for byte in fields["e_ident"]["EI_MAG"])
 
 
@@ -69,10 +70,10 @@ class PrintableSection(Printable):
             sep="\n",
         )
 
-    def __hex_dump(self, data: bytes):
+    def __hex_dump(self, data: bytes) -> str:
         return " ".join(f"{byte:02x}" for byte in data)
 
-    def __ascii_dump(self, data: bytes):
+    def __ascii_dump(self, data: bytes) -> str:
         return "".join(
             chr(byte) if 32 <= byte <= 126 else "." for byte in data
         )
@@ -96,7 +97,7 @@ class PrintableSections(Printable):
         for index, section in enumerate(sections.all()):
             print(f"{f'[{index}]':>4} {section.name()}")
 
-    def __full_print(self, sections: Sections):
+    def __full_print(self, sections: Sections) -> None:
         print(
             f"{'Idx':<4} {'Name':<20} {'Type':<10} {'Flags':<10} "
             f"{'Address':<12} {'Offset':<10} {'Size':<6} "

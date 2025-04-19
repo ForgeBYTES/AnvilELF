@@ -8,7 +8,7 @@ from src.control.command import Command
 
 class CommandLine(ABC):
     @abstractmethod
-    def run(self):
+    def run(self) -> None:
         pass  # pragma: no cover
 
 
@@ -17,7 +17,7 @@ class InteractiveCommandLine(CommandLine):
         self.__hint = hint
         self.__commands = commands
 
-    def run(self):
+    def run(self) -> None:
         while True:
             try:
                 if not (_input := self.__input()):
@@ -57,7 +57,7 @@ class HistoricalCommandLine(CommandLine):
     def __init__(self, origin: CommandLine):
         self.__origin = origin
 
-    def run(self):
+    def run(self) -> None:
         self.__setup_history(self.__HISTORY)
         self.__origin.run()
 

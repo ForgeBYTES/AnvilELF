@@ -17,6 +17,10 @@ class Section(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
+    def replace(self, data: bytes) -> None:
+        pass  # pragma: no cover
+
+    @abstractmethod
     def name(self) -> str:
         pass  # pragma: no cover
 
@@ -156,6 +160,14 @@ class RawSection(Section):
             + fields["sh_size"]
         ]
 
+    def replace(self, data: bytes) -> None:
+        fields = self.__section_header.fields()
+        self.__validate_size(data, fields)
+        self.__raw_data[
+            fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
+            + fields["sh_size"]
+        ] = data
+
     def name(self) -> str:
         return (
             str(self.__section_header.fields()["sh_name"])
@@ -164,6 +176,10 @@ class RawSection(Section):
                 self.__section_header.fields()["sh_name"]
             )
         )
+
+    def __validate_size(self, data: bytes, fields: dict[str, int]) -> None:
+        if len(data) != fields["sh_size"]:
+            raise ValueError("Invalid section size")
 
 
 class RawStringTable(StringTable):

@@ -20,7 +20,7 @@ from src.elf.binary import RawBinary, ValidatedBinary
 class Application:
     __BINARY_PATH = 1
 
-    def __init__(self, argv: list, intro: str, usage: str, hint: str):
+    def __init__(self, argv: list[str], intro: str, usage: str, hint: str):
         self.__argv = argv
         self.__intro = intro
         self.__usage = usage
@@ -54,7 +54,7 @@ class Application:
             print(error)
             raise SystemExit(1)
 
-    def __binary_path(self, argv: list) -> str:
+    def __binary_path(self, argv: list[str]) -> str:
         try:
             return argv[self.__BINARY_PATH]
         except IndexError:

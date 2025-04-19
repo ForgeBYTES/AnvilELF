@@ -9,7 +9,7 @@ from src.elf.section_header import SectionHeader, SectionHeaders
 
 class Section(ABC):
     @abstractmethod
-    def header(self) -> dict:
+    def header(self) -> dict[str, int]:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -103,11 +103,11 @@ class Symbol(ABC):
     ]
 
     @abstractmethod
-    def fields(self) -> dict:
+    def fields(self) -> dict[str, int]:
         pass  # pragma: no cover
 
     @abstractmethod
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict[str, int]) -> None:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -115,15 +115,15 @@ class Symbol(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
-    def bind(self):
+    def bind(self) -> int:
         pass  # pragma: no cover
 
     @abstractmethod
-    def type(self):
+    def type(self) -> int:
         pass  # pragma: no cover
 
     @abstractmethod
-    def visibility(self):
+    def visibility(self) -> int:
         pass  # pragma: no cover
 
 
@@ -146,7 +146,7 @@ class RawSection(Section):
         self.__section_header = header
         self.__shstrtab = shstrtab
 
-    def header(self) -> dict:
+    def header(self) -> dict[str, int]:
         return self.__section_header.fields()
 
     def raw_data(self) -> memoryview:
@@ -219,7 +219,7 @@ class RawSymbol(Symbol):
         self.__offset = offset
         self.__string_table = string_table
 
-    def fields(self) -> dict:
+    def fields(self) -> dict[str, int]:
         try:
             return dict(
                 zip(
@@ -234,7 +234,7 @@ class RawSymbol(Symbol):
         except struct.error:
             raise ValueError("Unable to process data")
 
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict[str, int]) -> None:
         try:
             _struct = struct.pack(
                 self.__STRUCT_FORMAT,
@@ -249,42 +249,42 @@ class RawSymbol(Symbol):
     def name(self) -> str:
         return self.__string_table.name_by_index(self.fields()["st_name"])
 
-    def bind(self):
-        return self.fields()["st_info"] >> 4
+    def bind(self) -> int:
+        return int(self.fields()["st_info"] >> 4)
 
-    def type(self):
-        return self.fields()["st_info"] & 0xF
+    def type(self) -> int:
+        return int(self.fields()["st_info"] & 0xF)
 
-    def visibility(self):
-        return self.fields()["st_other"] & 0x3
+    def visibility(self) -> int:
+        return int(self.fields()["st_other"] & 0x3)
 
 
 class ValidatedSymbol(Symbol):
     def __init__(self, origin: Symbol):
         self.__origin = origin
 
-    def fields(self) -> dict:
+    def fields(self) -> dict[str, int]:
         fields = self.__origin.fields()
         self.__validate(fields)
         return fields
 
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict[str, int]) -> None:
         self.__validate(fields)
         return self.__origin.change(fields)
 
     def name(self) -> str:
         return self.__origin.name()
 
-    def bind(self):
+    def bind(self) -> int:
         return self.__origin.bind()
 
-    def type(self):
+    def type(self) -> int:
         return self.__origin.type()
 
-    def visibility(self):
+    def visibility(self) -> int:
         return self.__origin.visibility()
 
-    def __validate(self, fields: dict):
+    def __validate(self, fields: dict[str, int]) -> None:
         for field, value in fields.items():
             match field:
                 case "st_info":
@@ -301,7 +301,7 @@ class ValidatedSymbol(Symbol):
 
             raise ValueError(f"Invalid value for {field}")
 
-    def __validate_field_exists(self, field: str, fields: list):
+    def __validate_field_exists(self, field: str, fields: list[str]) -> None:
         if field not in fields:
             raise ValueError(f"Unknown field {field}")
 
@@ -351,8 +351,8 @@ class RawDisassembly(Disassembly):
             ]
         raise ValueError("Section is not executable")
 
-    def __is_executable(self, header: dict) -> bool:
-        return header["sh_flags"] & self.__SHF_EXECINSTR
+    def __is_executable(self, header: dict[str, int]) -> bool:
+        return bool(header["sh_flags"] & self.__SHF_EXECINSTR)
 
-    def __instruction(self, address: str, mnemonic: str, op: str):
+    def __instruction(self, address: str, mnemonic: str, op: str) -> str:
         return f"{address:08x}: {mnemonic} {op}".rstrip()

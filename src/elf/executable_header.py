@@ -1,5 +1,6 @@
 import struct
 from abc import ABC, abstractmethod
+from typing import Any
 
 
 class ExecutableHeader(ABC):
@@ -49,11 +50,11 @@ class ExecutableHeader(ABC):
     _TYPES = [_ET_REL, _ET_EXEC, _ET_DYN, _ET_CORE]
 
     @abstractmethod
-    def fields(self) -> dict:
+    def fields(self) -> dict[str, Any]:
         pass  # pragma: no cover
 
     @abstractmethod
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict[str, Any]) -> None:
         pass  # pragma: no cover
 
 
@@ -63,7 +64,7 @@ class RawExecutableHeader(ExecutableHeader):
     def __init__(self, raw_data: bytearray):
         self.__raw_data = raw_data
 
-    def fields(self) -> dict:
+    def fields(self) -> dict[str, Any]:
         try:
             _struct = struct.unpack(
                 self.__STRUCT_FORMAT, self.__raw_data[: self._HEADER_SIZE]
@@ -95,7 +96,7 @@ class RawExecutableHeader(ExecutableHeader):
             "e_shstrndx": _struct[19],
         }
 
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict[str, Any]) -> None:
         try:
             self.__raw_data[: self._HEADER_SIZE] = struct.pack(
                 self.__STRUCT_FORMAT,
@@ -116,28 +117,28 @@ class ValidatedExecutableHeader(ExecutableHeader):
     def __init__(self, origin: ExecutableHeader):
         self.__origin = origin
 
-    def fields(self) -> dict:
+    def fields(self) -> dict[str, Any]:
         fields = self.__origin.fields()
         self.__validate_all(fields)
         return fields
 
-    def change(self, fields: dict) -> None:
+    def change(self, fields: dict[str, Any]) -> None:
         self.__validate(fields)
         return self.__origin.change(fields)
 
-    def __validate_all(self, fields: dict) -> None:
+    def __validate_all(self, fields: dict[str, Any]) -> None:
         if not self.__is_64_bit(fields):
             raise ValueError("Binary must be 64-bit")
         self.__validate(fields)
 
-    def __is_64_bit(self, fields: dict) -> bool:
-        return (
+    def __is_64_bit(self, fields: dict[str, Any]) -> bool:
+        return bool(
             fields["e_ident"]["EI_CLASS"] == self._ELFCLASS64
             and fields["e_machine"] == self._EM_X86_64
             and fields["e_ehsize"] == self._HEADER_SIZE
         )
 
-    def __validate(self, fields: dict) -> None:
+    def __validate(self, fields: dict[str, Any]) -> None:
         for field, value in fields.items():
             match field:
                 case "e_ident":
@@ -169,7 +170,7 @@ class ValidatedExecutableHeader(ExecutableHeader):
                     continue
             raise ValueError(f"Invalid value for {field}")
 
-    def __validate_e_ident(self, fields: dict):
+    def __validate_e_ident(self, fields: dict[str, Any]) -> None:
         for field, value in fields.items():
             match field:
                 case "EI_MAG":
@@ -189,10 +190,10 @@ class ValidatedExecutableHeader(ExecutableHeader):
     def __is_aligned(self, offset: int) -> bool:
         return offset >= 0 and offset % 8 == 0
 
-    def __validate_e_flags(self, e_flags: int, fields: dict) -> None:
+    def __validate_e_flags(self, e_flags: int, fields: dict[str, Any]) -> None:
         if fields["e_machine"] == self._EM_X86_64 and e_flags != 0:
             raise ValueError("Nonzero e_flags unexpected for x86-64")
 
-    def __validate_field_exists(self, field: str, fields: list):
+    def __validate_field_exists(self, field: str, fields: list[str]) -> None:
         if field not in fields:
             raise ValueError(f"Unknown field {field}")

@@ -1,5 +1,6 @@
 import argparse
 from abc import ABC, abstractmethod
+from typing import Never
 
 from src.elf.executable_header import ExecutableHeader
 from src.elf.section import (
@@ -29,7 +30,7 @@ class Command(ABC):
 
 
 class ArgumentParser(argparse.ArgumentParser):
-    def error(self, message):
+    def error(self, message: str) -> Never:
         raise ValueError(f"Invalid arguments: {message}")
 
 

@@ -1,7 +1,7 @@
 import subprocess
 
 
-def test_application_returns_usage_on_no_args():
+def test_application_returns_usage_on_no_args() -> None:
     result = subprocess.run(
         ["python", "main.py"], capture_output=True, text=True
     )
@@ -9,7 +9,7 @@ def test_application_returns_usage_on_no_args():
     assert "Usage: python main.py <binary>" in result.stdout
 
 
-def test_application_returns_error_on_nonexistent_file():
+def test_application_returns_error_on_nonexistent_file() -> None:
     result = subprocess.run(
         ["python", "main.py", "nonexistent"],
         capture_output=True,
@@ -19,7 +19,7 @@ def test_application_returns_error_on_nonexistent_file():
     assert "Failed to load binary" in result.stdout
 
 
-def test_application_runs():
+def test_application_runs() -> None:
     result = subprocess.run(
         ["python", "main.py", "tests/samples/binaries/binary"],
         capture_output=True,

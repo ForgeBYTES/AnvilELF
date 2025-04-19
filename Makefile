@@ -18,7 +18,7 @@ check:
 		python -m isort --check-only --split-on-trailing-comma --diff /src && \
 		python -m black --line-length 79 --check /src && \
 		python -m flake8 /src && \
-		python -m mypy --explicit-package-bases --disable-error-code import-untyped /src && \
+		python -m mypy --strict --explicit-package-bases --disable-error-code import-untyped /src && \
 		python -m pytest --cov-branch --cov-report=xml --cov=/src --cov-report=term-missing -vv /src/tests"
 
 fix:

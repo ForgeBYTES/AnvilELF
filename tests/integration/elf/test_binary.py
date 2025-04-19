@@ -7,7 +7,7 @@ import pytest
 
 from src.elf.binary import RawBinary, ValidatedBinary
 from src.elf.executable_header import ExecutableHeader
-from src.elf.section import RawStringTable, RawSymbolTable, Sections, Symbol
+from src.elf.section import Sections
 from src.elf.section_header import SectionHeaders
 
 
@@ -34,12 +34,20 @@ def prepare_temporary_binaries() -> Generator[None, None, None]:
         lambda path: ValidatedBinary(RawBinary(path)),
     ],
 )
-def test_changing_symbol_type_and_saving_binary(
+def test_replacing_shstrtab_and_saving_binary(
     prepare_temporary_binaries: Generator[None, None, None],
     binary: Callable[[str], RawBinary | ValidatedBinary],
 ) -> None:
-    path = "tests/samples/temporary_binaries/binary"
-    symbol_type = (Symbol.STB_GLOBAL << 4) | Symbol.STT_FUNC
+    path = "tests/samples/temporary_binaries/stripped-binary"
+    new_shstrtab = (
+        b"\x00.shstrtab\x00.interp\x00.note.gnu.property\x00"
+        b".note.gnu.build-id\x00.note.ABI-tag\x00.gnu.hash\x00"
+        b".dynsym\x00.dynstr\x00.gnu.version\x00.gnu.version_r\x00"
+        b".rela.dyn\x00.rela.plt\x00.init\x00.plt.got\x00.plt.sec\x00"
+        b".code\x00.fini\x00.rodata\x00.eh_frame_hdr\x00.eh_frame\x00"
+        b".init_array\x00.fini_array\x00.dynamic\x00.data\x00.bss\x00"
+        b".comment\x00"
+    )
     original_binary = binary(path)
 
     executable_header, section_header, sections = original_binary.components()
@@ -50,31 +58,18 @@ def test_changing_symbol_type_and_saving_binary(
 
     original_data = original_binary.raw_data()[:]
 
-    symbol = RawSymbolTable(
-        sections.find(".symtab"), RawStringTable(sections.find(".strtab"))
-    ).symbols()[1]
-    symbol_fields = symbol.fields()
+    text_data = sections.find(".text").raw_data().tobytes()
 
-    assert symbol_fields["st_info"] != symbol_type
-
-    symbol_fields["st_info"] = symbol_type
-    symbol.change(symbol_fields)
+    sections.find(".shstrtab").replace(new_shstrtab)
 
     original_binary.save()
 
     assert original_data != original_binary.raw_data()
 
     duplicate_binary = RawBinary(path)
-
-    assert original_binary.raw_data() == duplicate_binary.raw_data()
-
     _, _, sections = duplicate_binary.components()
 
-    duplicate_symbol = RawSymbolTable(
-        sections.find(".symtab"), RawStringTable(sections.find(".strtab"))
-    ).symbols()[1]
-
-    assert duplicate_symbol.fields()["st_info"] == symbol_type
+    assert sections.find(".code").raw_data().tobytes() == text_data
 
 
 def test_raising_on_saving_binary(

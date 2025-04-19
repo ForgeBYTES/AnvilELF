@@ -214,12 +214,12 @@ def test_returning_text_disassembly(raw_data: bytearray) -> None:
         executable_header,
     )
 
-    for section in sections.all():
-        if section.name() == ".text":
-            assert (
-                RawDisassembly(section).instructions()[: len(expected_output)]
-                == expected_output
-            )
+    assert (
+        RawDisassembly(sections.find(".text")).instructions()[
+            : len(expected_output)
+        ]
+        == expected_output
+    )
 
 
 @pytest.mark.parametrize(
@@ -386,3 +386,48 @@ def test_raising_on_changing_symbol_with_invalid_value(
 
     with pytest.raises(ValueError, match=error):
         ValidatedSymbol(symbol).change(fields)
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+)
+def test_changing_shstrtab_name(raw_data: bytearray) -> None:
+    data = (
+        b"\x00.shstrtab\x00.interp\x00.note.gnu.property\x00"
+        b".note.gnu.build-id\x00.note.ABI-tag\x00.gnu.hash\x00"
+        b".dynsym\x00.dynstr\x00.gnu.version\x00.gnu.version_r\x00"
+        b".rela.dyn\x00.rela.plt\x00.init\x00.plt.got\x00.plt.sec\x00"
+        b".code\x00.fini\x00.rodata\x00.eh_frame_hdr\x00.eh_frame\x00"
+        b".init_array\x00.fini_array\x00.dynamic\x00.data\x00.bss\x00"
+        b".comment\x00"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    text_data = sections.find(".text").raw_data().tobytes()
+
+    sections.find(".shstrtab").replace(data)
+
+    assert sections.find(".code").raw_data().tobytes() == text_data
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+)
+def test_raising_on_replacing_section_data_with_invalid_size(
+    raw_data: bytearray,
+) -> None:
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    with pytest.raises(ValueError, match="Invalid section size"):
+        sections.find(".shstrtab").replace(b"invalid size")

@@ -44,9 +44,9 @@ class PrintableSection(Printable):
     def print(self) -> None:
         header = self.__section.header()
         data = (
-            self.__section.data()
+            self.__section.raw_data()
             if self.__full
-            else self.__section.data()[:32]
+            else self.__section.raw_data()[:32]
         )
         print(
             "Section Header:",
@@ -62,8 +62,10 @@ class PrintableSection(Printable):
             f"  Section entry size: {header['sh_entsize']}",
             "Section:",
             f"  Name: {self.__section.name()}",
-            f"  Data: {self.__hex_dump(data)}{self.__dots(self.__full)}",
-            f"  ASCII: {self.__ascii_dump(data)}{self.__dots(self.__full)}",
+            f"  Data: "
+            f"{self.__hex_dump(data.tobytes())}{self.__dots(self.__full)}",
+            f"  ASCII: "
+            f"{self.__ascii_dump(data.tobytes())}{self.__dots(self.__full)}",
             sep="\n",
         )
 
@@ -142,26 +144,26 @@ class PrintableSymbolTable(Printable):
 
     def __bind_name(self, bind: int) -> str:
         return {
-            Symbol._STB_LOCAL: "LOCAL",
-            Symbol._STB_GLOBAL: "GLOBAL",
-            Symbol._STB_WEAK: "WEAK",
+            Symbol.STB_LOCAL: "LOCAL",
+            Symbol.STB_GLOBAL: "GLOBAL",
+            Symbol.STB_WEAK: "WEAK",
         }.get(bind, f"{bind}")
 
     def __type_name(self, _type: int) -> str:
         return {
-            Symbol._STT_NOTYPE: "NOTYPE",
-            Symbol._STT_OBJECT: "OBJECT",
-            Symbol._STT_FUNC: "FUNC",
-            Symbol._STT_SECTION: "SECTION",
-            Symbol._STT_FILE: "FILE",
+            Symbol.STT_NOTYPE: "NOTYPE",
+            Symbol.STT_OBJECT: "OBJECT",
+            Symbol.STT_FUNC: "FUNC",
+            Symbol.STT_SECTION: "SECTION",
+            Symbol.STT_FILE: "FILE",
         }.get(_type, f"{_type}")
 
     def __visibility_name(self, visibility: int) -> str:
         return {
-            Symbol._STV_DEFAULT: "DEFAULT",
-            Symbol._STV_INTERNAL: "INTERNAL",
-            Symbol._STV_HIDDEN: "HIDDEN",
-            Symbol._STV_PROTECTED: "PROTECTED",
+            Symbol.STV_DEFAULT: "DEFAULT",
+            Symbol.STV_INTERNAL: "INTERNAL",
+            Symbol.STV_HIDDEN: "HIDDEN",
+            Symbol.STV_PROTECTED: "PROTECTED",
         }.get(visibility, f"{visibility}")
 
 

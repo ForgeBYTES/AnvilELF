@@ -16,7 +16,7 @@ def test_application_returns_error_on_nonexistent_file():
         text=True,
     )
     assert result.returncode == 1
-    assert "Failed to load file: 'No such file or directory'" in result.stdout
+    assert "Failed to load binary" in result.stdout
 
 
 def test_application_runs():

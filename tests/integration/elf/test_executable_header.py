@@ -1,6 +1,5 @@
 import pytest
 
-from src.elf.cache import CachedExecutableHeader
 from src.elf.executable_header import (
     RawExecutableHeader,
     ValidatedExecutableHeader,
@@ -45,8 +44,8 @@ def raw_data(request) -> bytearray:
     "_class",
     [
         RawExecutableHeader,
-        lambda raw_data: CachedExecutableHeader(
-            ValidatedExecutableHeader(RawExecutableHeader(raw_data))
+        lambda raw_data: ValidatedExecutableHeader(
+            RawExecutableHeader(raw_data)
         ),
     ],
 )
@@ -61,8 +60,8 @@ def test_returning_fields(raw_data, expected_data, _class):
     "_class",
     [
         RawExecutableHeader,
-        lambda raw_data: CachedExecutableHeader(
-            ValidatedExecutableHeader(RawExecutableHeader(raw_data))
+        lambda raw_data: ValidatedExecutableHeader(
+            RawExecutableHeader(raw_data)
         ),
     ],
 )
@@ -97,7 +96,7 @@ def test_changing_fields(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_changing_fields_with_missing_key_in_expected_data(
+def test_raising_on_changing_fields_with_missing_field_in_expected_data(
     raw_data, expected_data
 ):
     expected_data["sh_flags"] = 4

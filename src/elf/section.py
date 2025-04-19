@@ -269,6 +269,7 @@ class ValidatedSymbol(Symbol):
         return fields
 
     def change(self, fields: dict) -> None:
+        self.__validate(fields)
         return self.__origin.change(fields)
 
     def name(self) -> str:
@@ -291,10 +292,6 @@ class ValidatedSymbol(Symbol):
                     bind = value >> 4
                     if bind in self._BINDS and _type in self._TYPES:
                         continue
-                case "st_other":
-                    visibility = value & 0x3
-                    if visibility in self._VISIBILITIES:
-                        continue
                 case "st_shndx":
                     if 0 <= value <= 0xFFFF:
                         continue
@@ -302,11 +299,11 @@ class ValidatedSymbol(Symbol):
                     self.__validate_field_exists(field, self._FIELDS)
                     continue
 
-            raise ValueError(f"Invalid value for {field}")  # pragma: no cover
+            raise ValueError(f"Invalid value for {field}")
 
     def __validate_field_exists(self, field: str, fields: list):
         if field not in fields:
-            raise ValueError(f"Unknown field {field}")  # pragma: no cover
+            raise ValueError(f"Unknown field {field}")
 
 
 class RawSymbolTable(SymbolTable):

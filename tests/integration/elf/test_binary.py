@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -72,3 +73,9 @@ def test_changing_symbol_type_and_saving_binary(
     ).symbols()[1]
 
     assert duplicate_symbol.fields()["st_info"] == symbol_type
+
+
+def test_raising_on_saving_binary(prepare_temporary_binaries):
+    with patch("builtins.open", side_effect=OSError):
+        with pytest.raises(ValueError, match="Failed to save binary"):
+            RawBinary("tests/samples/temporary_binaries/binary").save()

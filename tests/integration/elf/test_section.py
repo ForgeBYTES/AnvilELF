@@ -333,3 +333,37 @@ def test_raising_on_changing_fields_with_missing_field(raw_data):
 
     with pytest.raises(ValueError, match="Unable to process data"):
         symbol.change(fields)
+
+
+@pytest.mark.parametrize(
+    "field, invalid_value, error",
+    [
+        ("st_info", 254, "Invalid value for st_info"),
+        ("st_other", 256, "Unable to process data"),
+        ("st_shndx", 999999, "Invalid value for st_shndx"),
+        ("unknown", 123, "Unknown field unknown"),
+    ],
+)
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_changing_symbol_with_invalid_value(
+    raw_data, field, invalid_value, error
+):
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    symbol = RawSymbolTable(
+        sections.find(".symtab"),
+        RawStringTable(sections.find(".strtab")),
+    ).symbols()[1]
+
+    fields = symbol.fields()
+    fields[field] = invalid_value
+
+    with pytest.raises(ValueError, match=error):
+        ValidatedSymbol(symbol).change(fields)

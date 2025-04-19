@@ -59,7 +59,7 @@ class RawBinary(Binary):
         try:
             with open(self.__path, "wb") as file:
                 file.write(self.raw_data())
-        except OSError:  # pragma: no cover
+        except OSError:
             raise ValueError("Failed to save binary")
 
 

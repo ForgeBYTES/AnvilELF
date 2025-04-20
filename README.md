@@ -12,16 +12,16 @@ It is built with **SOLID principles**, **full test coverage**, and a strong focu
 
 ## 🚀 Roadmap
 
-| **Structure**                  | **Manipulation**             |
-|--------------------------------|------------------------------|
-| ✅ Executable Header            | 🔄 Process Tracing           |
-| ✅ Section Headers              | 🔄 Patching & Code Injection |
-| ✅ Sections                     | 🔄 Infection Detection       |
-| ✅ String & Symbol Tables       | 🔄 Obfuscation               |
-| 🔄 Program Headers             |                              |
-| 🔄 Segments                    |                              |
-| 🔄 Relocations & Linking       |                              |
-| 🧠 Obfuscated / Headerless ELF |                              |
+| **Structure**                       | **Manipulation**             |
+|-------------------------------------|------------------------------|
+| ✅ Executable Header                 | 🔄 Process Tracing           |
+| ✅ Section Headers                   | 🔄 Patching & Code Injection |
+| ✅ Sections                          | 🔄 Infection Detection       |
+| ✅ String & Symbol Tables            | 🔄 Obfuscation               |
+| 🔄 Program Headers                  |                              |
+| 🔄 Segments                         |                              |
+| 🔄 Relocations & Linking            |                              |
+| 🧠 Obfuscated / Headerless Binaries |                              |
 
 ## 🧠 Obfuscated / Headerless Binaries (planned)
 **The forge won’t cool down just because structure is missing.** 😎

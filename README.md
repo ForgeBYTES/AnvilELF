@@ -26,9 +26,9 @@ It is built with **SOLID principles**, **full test coverage**, and a strong focu
 ## 🧠 Obfuscated / Headerless Binaries (planned)
 **The forge won’t cool down just because structure is missing.** 😎
 
-AnvilELF will evolve to handle binaries that lie or hide — stripped headers, renamed sections, corrupted tables. The goal is to analyze and mutate based on **real layout and memory flags**, not names or conventions.
+AnvilELF will evolve to handle binaries that lie or hide — with lost section headers, unconventional layouts, and obfuscation.
 
-> No `.text`? Corrupt headers? Misleading offsets? Let’s dance. 🔥
+> No e_shoff, e_shentsize, or e_shnum? Stripped section headers? Let’s dance. 🔥
 
 ## ⚡ Usage
 
@@ -54,9 +54,9 @@ anvil> init
 # Disassemble .fini section
 anvil> fini
 
-# Show .symtab symbol table
+# Inspect .symtab symbol table
 anvil> symtab
-# Show .dynsym symbol table
+# Inspect .dynsym symbol table
 anvil> dynsym
 
 # Exit the shell

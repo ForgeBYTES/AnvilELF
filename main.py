@@ -23,8 +23,8 @@ text [--offset N] [--size N]  Disassemble .text section
 plt                           Disassemble .plt section
 init                          Disassemble .init section
 fin                           Disassemble .fin section
-dynsym                        Show .dynsym section
-symtab                        Show .symtab section
+dynsym                        Inspect .dynsym section
+symtab                        Inspect .symtab section
 exit                          Exit the shell
 """
 

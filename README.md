@@ -5,21 +5,34 @@
 
 **From raw bytes to forged ELF—crafted with purist OOP.**
 
-AnvilELF is a purist object-oriented tool for ELF binary parsing, modification, tracing, and code injection. It is built with **SOLID principles**, **full test coverage**, and a strong focus on **maintainability**.
+AnvilELF is a purist object-oriented tool for ELF binary parsing, inspection, and modification.  
+It is built with **SOLID principles**, **full test coverage**, and a strong focus on **maintainability**.
 
 ![AnvilELF CLI in action](media/cli_preview.gif)
 
-## 🚀 Roadmap 
+---
 
-|  **Binary Format**               |  **Process Tracing & Code Injection**   |
-|----------------------------------|-----------------------------------------|
-| ✅ Executable Header              | 🔄 Process Tracing (`ptrace` & `/proc`) |
-| ✅ Section Headers                | 🔄 Infection Detection                  |
-| ✅ Sections                      | 🔄 Code Injection                       |
-| ✅ String & Symbol Tables        |                                         |
-| 🔄 Program Headers               |                                         |
-| 🔄 Segments                      |                                         |
-| 🔄 Dynamic Linking & Relocations |                                         |
+## 🚀 Roadmap
+
+| **Structure**                  | **Manipulation**             |
+|--------------------------------|------------------------------|
+| ✅ Executable Header            | 🔄 Process Tracing           |
+| ✅ Section Headers              | 🔄 Patching & Code Injection |
+| ✅ Sections                     | 🔄 Infection Detection       |
+| ✅ String & Symbol Tables       | 🔄 Obfuscation               |
+| 🔄 Program Headers             |                              |
+| 🔄 Segments                    |                              |
+| 🔄 Relocations & Linking       |                              |
+| 🧠 Obfuscated / Headerless ELF |                              |
+
+## 🧠 Obfuscated / Headerless Binaries (planned)
+**The forge won’t cool down just because structure is missing.** 😎
+
+AnvilELF will evolve to handle binaries that lie or hide — stripped headers, renamed sections, corrupted tables. The goal is to analyze and mutate based on **real layout and memory flags**, not names or conventions.
+
+> No `.text`? Corrupt headers? Misleading offsets? Let’s dance. 🔥
+
+---
 
 ## ⚡ Usage
 
@@ -53,6 +66,8 @@ anvil> dynsym
 # Exit the shell
 anvil> exit
 ```
+
+---
 
 ## 🏗 Development
 

@@ -10,8 +10,6 @@ It is built with **SOLID principles**, **full test coverage**, and a strong focu
 
 ![AnvilELF CLI in action](media/cli_preview.gif)
 
----
-
 ## 🚀 Roadmap
 
 | **Structure**                  | **Manipulation**             |
@@ -31,8 +29,6 @@ It is built with **SOLID principles**, **full test coverage**, and a strong focu
 AnvilELF will evolve to handle binaries that lie or hide — stripped headers, renamed sections, corrupted tables. The goal is to analyze and mutate based on **real layout and memory flags**, not names or conventions.
 
 > No `.text`? Corrupt headers? Misleading offsets? Let’s dance. 🔥
-
----
 
 ## ⚡ Usage
 
@@ -66,8 +62,6 @@ anvil> dynsym
 # Exit the shell
 anvil> exit
 ```
-
----
 
 ## 🏗 Development
 

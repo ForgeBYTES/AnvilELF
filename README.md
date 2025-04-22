@@ -23,7 +23,7 @@ It is built with **SOLID principles**, **full test coverage**, and a strong focu
 | 🔄 Relocations & Linking            |                              |
 | 🧠 Obfuscated / Headerless Binaries |                              |
 
-## 🧠 Obfuscated / Headerless Binaries (planned)
+## 🧠 Obfuscated / Headerless Binaries
 **The forge won’t cool down just because structure is missing.** 😎
 
 AnvilELF will evolve to handle binaries that lie or hide — with lost section headers, unconventional layouts, and obfuscation.

@@ -148,9 +148,9 @@ class RawSectionHeaders(SectionHeaders):
 
     def all(self) -> list[SectionHeader]:
         fields = self.__executable_header.fields()
-        if self.__is_metadata_incomplete(fields):
+        if self.__is_metadata_invalid(fields):
             raise ValueError(
-                "Section header table metadata is missing or incomplete"
+                "Section header table metadata is missing or invalid"
             )
         return [
             RawSectionHeader(
@@ -160,11 +160,15 @@ class RawSectionHeaders(SectionHeaders):
             for index in range(fields["e_shnum"])
         ]
 
-    def __is_metadata_incomplete(self, fields: dict[str, Any]) -> bool:
+    def __is_metadata_invalid(self, fields: dict[str, Any]) -> bool:
         return bool(
             fields["e_shoff"] == 0
             or fields["e_shnum"] == 0
             or fields["e_shentsize"] == 0
+            or (
+                fields["e_shoff"] + (fields["e_shentsize"] * fields["e_shnum"])
+                > len(self.__raw_data)
+            )
         )
 
 

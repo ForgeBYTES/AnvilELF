@@ -192,7 +192,7 @@ def test_printing_full_sections(
         assert (
             re.compile(
                 (
-                    r"^\s*\[\d+]\s+"
+                    r"^\[\d+]\s+"
                     r"(?:\.\S+|\s+)\s+"
                     r"\d+\s+"
                     r"0x[0-9a-fA-F]+\s+"

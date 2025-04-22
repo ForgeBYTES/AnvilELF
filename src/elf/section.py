@@ -221,16 +221,13 @@ class RawSections(Sections):
         raise ValueError(f"Section '{name}' not found")  # pragma: no cover
 
     def __shstrtab(
-        self, e_shstrndx: int, headers: list[SectionHeader]
+        self, index: int, headers: list[SectionHeader]
     ) -> StringTable | None:
         if (
-            0 < e_shstrndx < len(headers)
-            and headers[e_shstrndx].fields().get("sh_type")
-            == SectionHeader.SHT_STRTAB
+            0 < index < len(headers)
+            and headers[index].fields()["sh_type"] == SectionHeader.SHT_STRTAB
         ):
-            return RawStringTable(
-                RawSection(self.__raw_data, headers[e_shstrndx])
-            )
+            return RawStringTable(RawSection(self.__raw_data, headers[index]))
         return None
 
 

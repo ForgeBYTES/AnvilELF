@@ -56,7 +56,12 @@ def test_executable_header_command(
 
 
 @pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+    "raw_data",
+    [
+        "tests/samples/binaries/stripped-binary",
+        "tests/samples/binaries/binary-with-stripped-section-headers",
+    ],
+    indirect=True,
 )
 def test_sections_command_with_full_flag(
     raw_data: bytearray, capsys: CaptureFixture[str]
@@ -87,8 +92,8 @@ def test_sections_command_with_full_flag(
         assert (
             re.compile(
                 (
-                    r"^\s*\[\d+]\s+"
-                    r"(?:\.\S+|\s+)\s+"
+                    r"^\[\d+]\s+"
+                    r"(?:\S+|\s{1,})\s+"
                     r"\d+\s+"
                     r"0x[0-9a-fA-F]+\s+"
                     r"0x[0-9a-fA-F]+\s+"

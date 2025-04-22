@@ -112,13 +112,13 @@ def test_returning_components_by_headerless_binary(
     assert isinstance(section_headers, SectionHeaders)
     with pytest.raises(
         ValueError,
-        match="Section header table metadata is missing or incomplete",
+        match="Section header table metadata is missing or invalid",
     ):
         section_headers.all()
 
     assert isinstance(sections, Sections)
     with pytest.raises(
         ValueError,
-        match="Section header table metadata is missing or incomplete",
+        match="Section header table metadata is missing or invalid",
     ):
         sections.all()

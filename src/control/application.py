@@ -14,7 +14,7 @@ from src.control.command_line import (
     HistoricalCommandLine,
     InteractiveCommandLine,
 )
-from src.elf.binary import RawBinary, ValidatedBinary
+from src.elf.binary import RawBinary
 
 
 class Application:
@@ -30,8 +30,8 @@ class Application:
         try:
             print(self.__intro)
 
-            executable_header, section_headers, sections = ValidatedBinary(
-                RawBinary(self.__binary_path(self.__argv))
+            executable_header, section_headers, sections = RawBinary(
+                self.__binary_path(self.__argv)
             ).components()
 
             return HistoricalCommandLine(

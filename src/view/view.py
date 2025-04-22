@@ -51,7 +51,7 @@ class PrintableSection(Printable):
         )
         print(
             "Section Header:",
-            f"  Name: {header['sh_name']} (index in .shstrtab)",
+            f"  Name: {header['sh_name']}",
             f"  Type: {header['sh_type']}",
             f"  Flags: 0x{header['sh_flags']:x}",
             f"  Address: 0x{header['sh_addr']:x}",

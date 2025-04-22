@@ -11,7 +11,7 @@ WORKDIR /src
 COPY --chown=anvilelf:anvilelf . /src
 
 RUN apt update && \
-    apt install -y gcc && \
+    apt install -y gcc binutils && \
     pip install -r /src/requirements.txt -r /src/requirements-dev.txt
 
 USER anvilelf

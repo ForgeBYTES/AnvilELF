@@ -48,9 +48,9 @@ class Disassembly(ABC):
 
 
 class Symbol(ABC):
-    _ENTRY_SIZE = 24
+    ENTRY_SIZE = 24
 
-    _FIELDS = [
+    FIELDS = [
         "st_name",
         "st_info",
         "st_other",
@@ -68,7 +68,7 @@ class Symbol(ABC):
     STB_HIPROC = 15
 
     # fmt: off
-    _BINDS = [
+    BINDS = [
         STB_LOCAL, STB_GLOBAL, STB_WEAK, STB_LOOS,
         STB_HIOS, STB_LOPROC, STB_HIPROC,
     ]
@@ -87,7 +87,7 @@ class Symbol(ABC):
     STT_HIPROC = 15
 
     # fmt: off
-    _TYPES = [
+    TYPES = [
         STT_NOTYPE, STT_OBJECT, STT_FUNC, STT_SECTION, STT_FILE,
         STT_COMMON, STT_TLS, STT_LOOS, STT_HIOS, STT_LOPROC,
         STT_HIPROC,
@@ -99,7 +99,7 @@ class Symbol(ABC):
     STV_HIDDEN = 2
     STV_PROTECTED = 3
 
-    _VISIBILITIES = [
+    VISIBILITIES = [
         STV_DEFAULT,
         STV_INTERNAL,
         STV_HIDDEN,
@@ -169,13 +169,11 @@ class RawSection(Section):
         ] = data
 
     def name(self) -> str:
-        return (
-            str(self.__section_header.fields()["sh_name"])
-            if self.__shstrtab is None
-            else self.__shstrtab.name_by_index(
+        if self.__shstrtab is not None:
+            return self.__shstrtab.name_by_index(
                 self.__section_header.fields()["sh_name"]
             )
-        )
+        return str(self.__section_header.fields()["sh_name"])
 
     def __validate_size(self, data: bytes, fields: dict[str, int]) -> None:
         if len(data) != fields["sh_size"]:
@@ -211,9 +209,7 @@ class RawSections(Sections):
             RawSection(
                 self.__raw_data,
                 header,
-                RawStringTable(
-                    RawSection(self.__raw_data, headers[e_shstrndx])
-                ),
+                self.__shstrtab(e_shstrndx, headers),
             )
             for header in headers
         ]
@@ -223,6 +219,19 @@ class RawSections(Sections):
             if section.name() == name:
                 return section
         raise ValueError(f"Section '{name}' not found")  # pragma: no cover
+
+    def __shstrtab(
+        self, e_shstrndx: int, headers: list[SectionHeader]
+    ) -> StringTable | None:
+        if (
+            0 < e_shstrndx < len(headers)
+            and headers[e_shstrndx].fields().get("sh_type")
+            == SectionHeader.SHT_STRTAB
+        ):
+            return RawStringTable(
+                RawSection(self.__raw_data, headers[e_shstrndx])
+            )
+        return None
 
 
 class RawSymbol(Symbol):
@@ -239,7 +248,7 @@ class RawSymbol(Symbol):
         try:
             return dict(
                 zip(
-                    self._FIELDS,
+                    self.FIELDS,
                     struct.unpack_from(
                         self.__STRUCT_FORMAT,
                         self.__raw_data,
@@ -254,10 +263,10 @@ class RawSymbol(Symbol):
         try:
             _struct = struct.pack(
                 self.__STRUCT_FORMAT,
-                *(fields[field] for field in self._FIELDS),
+                *(fields[field] for field in self.FIELDS),
             )
             self.__raw_data[
-                self.__offset : self.__offset + self._ENTRY_SIZE  # noqa: E203
+                self.__offset : self.__offset + self.ENTRY_SIZE  # noqa: E203
             ] = _struct
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")
@@ -306,13 +315,13 @@ class ValidatedSymbol(Symbol):
                 case "st_info":
                     _type = value & 0xF
                     bind = value >> 4
-                    if bind in self._BINDS and _type in self._TYPES:
+                    if bind in self.BINDS and _type in self.TYPES:
                         continue
                 case "st_shndx":
                     if 0 <= value <= 0xFFFF:
                         continue
                 case _:
-                    self.__validate_field_exists(field, self._FIELDS)
+                    self.__validate_field_exists(field, self.FIELDS)
                     continue
 
             raise ValueError(f"Invalid value for {field}")

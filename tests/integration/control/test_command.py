@@ -111,7 +111,7 @@ def test_section_command(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     patterns = [
-        r"Section Header:\n\s+Name:\s+\d+ \(index in \.shstrtab\)",
+        r"Section Header:\n\s+Name:\s+\d+",
         r"Type:\s+\d+",
         r"Flags:\s+0x[0-9a-fA-F]+",
         r"Address:\s+0x[0-9a-fA-F]+",
@@ -152,7 +152,7 @@ def test_section_command_with_full_flag(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     patterns = [
-        r"Section Header:\n\s+Name:\s+\d+ \(index in \.shstrtab\)",
+        r"Section Header:\n\s+Name:\s+\d+",
         r"Type:\s+\d+",
         r"Flags:\s+0x[0-9a-fA-F]+",
         r"Address:\s+0x[0-9a-fA-F]+",

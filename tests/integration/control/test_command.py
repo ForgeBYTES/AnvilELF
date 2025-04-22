@@ -193,7 +193,7 @@ def test_section_command_with_full_flag(
     ["tests/samples/binaries/binary-with-stripped-section-headers"],
     indirect=True,
 )
-def test_section_command_using_binary_with_stripped_section_headers(
+def test_section_command_with_stripped_section_headers(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     expected_zero_sh_name = "0"
@@ -228,6 +228,49 @@ def test_section_command_using_binary_with_stripped_section_headers(
     assert command.name() == "section"
 
     command.execute(["--name", expected_zero_sh_name])
+    assert expected_output == capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/binaries/binary-with-stripped-section-headers"],
+    indirect=True,
+)
+def test_section_command_with_stripped_section_headers_and_full_flag(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    expected_zero_sh_name = "0"
+    expected_output = (
+        "Section Header:\n"
+        "  Name: 0\n"
+        "  Type: 0\n"
+        "  Flags: 0x0\n"
+        "  Address: 0x0\n"
+        "  Offset: 0x0\n"
+        "  Section size: 0 bytes\n"
+        "  Link: 0\n"
+        "  Info: 0\n"
+        "  Address alignment: 0\n"
+        "  Section entry size: 0\n"
+        "Section:\n"
+        "  Name: 0\n"
+        "  Data: \n"
+        "  ASCII: \n"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+
+    command = SectionCommand(
+        RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, executable_header),
+            executable_header,
+        )
+    )
+
+    assert command.name() == "section"
+
+    command.execute(["--name", expected_zero_sh_name, "--full"])
     assert expected_output == capsys.readouterr().out
 
 

@@ -1,12 +1,13 @@
 import struct
 from abc import ABC, abstractmethod
+from typing import Any
 
 from src.elf.executable_header import ExecutableHeader
 
 
 class SectionHeader(ABC):
-    _HEADER_SIZE = 64
-    _FIELDS = [
+    HEADER_SIZE = 64
+    FIELDS = [
         "sh_name",
         "sh_type",
         "sh_flags",
@@ -19,68 +20,68 @@ class SectionHeader(ABC):
         "sh_entsize",
     ]
 
-    _SHT_NULL = 0
-    _SHT_PROGBITS = 1
-    _SHT_SYMTAB = 2
-    _SHT_STRTAB = 3
-    _SHT_RELA = 4
-    _SHT_HASH = 5
-    _SHT_DYNAMIC = 6
-    _SHT_NOTE = 7
-    _SHT_NOBITS = 8
-    _SHT_REL = 9
-    _SHT_SHLIB = 10
-    _SHT_DYNSYM = 11
-    _SHT_INIT_ARRAY = 14
-    _SHT_FINI_ARRAY = 15
-    _SHT_PREINIT_ARRAY = 16
-    _SHT_GROUP = 17
-    _SHT_SYMTAB_SHNDX = 18
+    SHT_NULL = 0
+    SHT_PROGBITS = 1
+    SHT_SYMTAB = 2
+    SHT_STRTAB = 3
+    SHT_RELA = 4
+    SHT_HASH = 5
+    SHT_DYNAMIC = 6
+    SHT_NOTE = 7
+    SHT_NOBITS = 8
+    SHT_REL = 9
+    SHT_SHLIB = 10
+    SHT_DYNSYM = 11
+    SHT_INIT_ARRAY = 14
+    SHT_FINI_ARRAY = 15
+    SHT_PREINIT_ARRAY = 16
+    SHT_GROUP = 17
+    SHT_SYMTAB_SHNDX = 18
 
     # fmt: off
     _TYPES = [
-        _SHT_NULL, _SHT_PROGBITS, _SHT_SYMTAB, _SHT_STRTAB, _SHT_RELA,
-        _SHT_HASH, _SHT_DYNAMIC, _SHT_NOTE, _SHT_NOBITS, _SHT_REL,
-        _SHT_SHLIB, _SHT_DYNSYM, _SHT_INIT_ARRAY, _SHT_FINI_ARRAY,
-        _SHT_PREINIT_ARRAY, _SHT_GROUP, _SHT_SYMTAB_SHNDX,
+        SHT_NULL, SHT_PROGBITS, SHT_SYMTAB, SHT_STRTAB, SHT_RELA,
+        SHT_HASH, SHT_DYNAMIC, SHT_NOTE, SHT_NOBITS, SHT_REL,
+        SHT_SHLIB, SHT_DYNSYM, SHT_INIT_ARRAY, SHT_FINI_ARRAY,
+        SHT_PREINIT_ARRAY, SHT_GROUP, SHT_SYMTAB_SHNDX,
     ]
     # fmt: on
 
-    _SHT_SUNW_MOVE = 0x6FFFFFFA
-    _SHT_SUNW_COMDAT = 0x6FFFFFFB
-    _SHT_SUNW_SYMINFO = 0x6FFFFFFC
-    _SHT_SUNW_VERDEF = 0x6FFFFFFD
-    _SHT_SUNW_VERNEED = 0x6FFFFFFE
-    _SHT_SUNW_VERSYM = 0x6FFFFFFF
+    SHT_SUNW_MOVE = 0x6FFFFFFA
+    SHT_SUNW_COMDAT = 0x6FFFFFFB
+    SHT_SUNW_SYMINFO = 0x6FFFFFFC
+    SHT_SUNW_VERDEF = 0x6FFFFFFD
+    SHT_SUNW_VERNEED = 0x6FFFFFFE
+    SHT_SUNW_VERSYM = 0x6FFFFFFF
 
-    _SHT_LOOS = 0x60000000
-    _SHT_HIOS = 0x6FFFFFFF
-    _SHT_LOPROC = 0x70000000
-    _SHT_HIPROC = 0x7FFFFFFF
-    _SHT_LOUSER = 0x80000000
-    _SHT_HIUSER = 0x8FFFFFFF
+    SHT_LOOS = 0x60000000
+    SHT_HIOS = 0x6FFFFFFF
+    SHT_LOPROC = 0x70000000
+    SHT_HIPROC = 0x7FFFFFFF
+    SHT_LOUSER = 0x80000000
+    SHT_HIUSER = 0x8FFFFFFF
 
-    _SHF_WRITE = 0x1
-    _SHF_ALLOC = 0x2
-    _SHF_EXECINSTR = 0x4
-    _SHF_MERGE = 0x10
-    _SHF_STRINGS = 0x20
-    _SHF_INFO_LINK = 0x40
-    _SHF_LINK_ORDER = 0x80
-    _SHF_OS_NONCONFORMING = 0x100
-    _SHF_GROUP = 0x200
-    _SHF_TLS = 0x400
-    _SHF_MASKOS = 0x0FF00000
-    _SHF_ORDERED = 0x40000000
-    _SHF_EXCLUDE = 0x80000000
-    _SHF_MASKPROC = 0xF0000000
+    SHF_WRITE = 0x1
+    SHF_ALLOC = 0x2
+    SHF_EXECINSTR = 0x4
+    SHF_MERGE = 0x10
+    SHF_STRINGS = 0x20
+    SHF_INFO_LINK = 0x40
+    SHF_LINK_ORDER = 0x80
+    SHF_OS_NONCONFORMING = 0x100
+    SHF_GROUP = 0x200
+    SHF_TLS = 0x400
+    SHF_MASKOS = 0x0FF00000
+    SHF_ORDERED = 0x40000000
+    SHF_EXCLUDE = 0x80000000
+    SHF_MASKPROC = 0xF0000000
 
     # fmt: off
-    _FLAGS = (
-        _SHF_WRITE | _SHF_ALLOC | _SHF_EXECINSTR | _SHF_MERGE |
-        _SHF_STRINGS | _SHF_INFO_LINK | _SHF_LINK_ORDER |
-        _SHF_OS_NONCONFORMING | _SHF_GROUP | _SHF_TLS | _SHF_MASKOS |
-        _SHF_ORDERED | _SHF_EXCLUDE | _SHF_MASKPROC
+    FLAGS = (
+        SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR | SHF_MERGE |
+        SHF_STRINGS | SHF_INFO_LINK | SHF_LINK_ORDER |
+        SHF_OS_NONCONFORMING | SHF_GROUP | SHF_TLS | SHF_MASKOS |
+        SHF_ORDERED | SHF_EXCLUDE | SHF_MASKPROC
     )
     # fmt: on
 
@@ -112,12 +113,12 @@ class RawSectionHeader(SectionHeader):
         try:
             return dict(
                 zip(
-                    self._FIELDS,
+                    self.FIELDS,
                     struct.unpack(
                         self.__STRUCT_FORMAT,
                         self.__raw_data[
                             self.__offset : self.__offset  # noqa: E203
-                            + self._HEADER_SIZE
+                            + self.HEADER_SIZE
                         ],
                     ),
                 )
@@ -129,10 +130,10 @@ class RawSectionHeader(SectionHeader):
         try:
             _struct = struct.pack(
                 self.__STRUCT_FORMAT,
-                *(fields[field] for field in self._FIELDS),
+                *(fields[field] for field in self.FIELDS),
             )
             self.__raw_data[
-                self.__offset : self.__offset + self._HEADER_SIZE  # noqa: E203
+                self.__offset : self.__offset + self.HEADER_SIZE  # noqa: E203
             ] = _struct
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")
@@ -147,6 +148,10 @@ class RawSectionHeaders(SectionHeaders):
 
     def all(self) -> list[SectionHeader]:
         fields = self.__executable_header.fields()
+        if self.__is_metadata_incomplete(fields):
+            raise ValueError(
+                "Section header table metadata is missing or incomplete"
+            )
         return [
             RawSectionHeader(
                 self.__raw_data,
@@ -154,6 +159,13 @@ class RawSectionHeaders(SectionHeaders):
             )
             for index in range(fields["e_shnum"])
         ]
+
+    def __is_metadata_incomplete(self, fields: dict[str, Any]) -> bool:
+        return bool(
+            fields["e_shoff"] == 0
+            or fields["e_shnum"] == 0
+            or fields["e_shentsize"] == 0
+        )
 
 
 class ValidatedSectionHeader(SectionHeader):
@@ -185,7 +197,7 @@ class ValidatedSectionHeader(SectionHeader):
                     if self.__is_valid_type(value):
                         continue
                 case "sh_flags":
-                    if value & ~self._FLAGS == 0:
+                    if value & ~self.FLAGS == 0:
                         continue
                 case "sh_addralign":
                     if self.__is_power_of_two(value):
@@ -210,7 +222,7 @@ class ValidatedSectionHeader(SectionHeader):
                     if self.__is_sh_entsize_valid(value, fields):
                         continue
                 case _:
-                    self.__validate_field_exists(field, self._FIELDS)
+                    self.__validate_field_exists(field, self.FIELDS)
                     continue
 
             raise ValueError(f"Invalid value for {field}: {value}")
@@ -218,9 +230,9 @@ class ValidatedSectionHeader(SectionHeader):
     def __is_valid_type(self, sh_type: int) -> bool:
         return (
             sh_type in self._TYPES
-            or (self._SHT_LOOS <= sh_type <= self._SHT_HIOS)
-            or (self._SHT_LOPROC <= sh_type <= self._SHT_HIPROC)
-            or (self._SHT_LOUSER <= sh_type <= self._SHT_HIUSER)
+            or (self.SHT_LOOS <= sh_type <= self.SHT_HIOS)
+            or (self.SHT_LOPROC <= sh_type <= self.SHT_HIPROC)
+            or (self.SHT_LOUSER <= sh_type <= self.SHT_HIUSER)
         )
 
     def __is_power_of_two(self, value: int) -> bool:
@@ -229,7 +241,7 @@ class ValidatedSectionHeader(SectionHeader):
     def __is_sh_addr_aligned(
         self, sh_addr: int, fields: dict[str, int]
     ) -> bool:
-        if fields["sh_flags"] & self._SHF_ALLOC:
+        if fields["sh_flags"] & self.SHF_ALLOC:
             return (
                 sh_addr % fields["sh_addralign"] == 0
                 if fields["sh_addralign"] not in [0, 1]
@@ -244,19 +256,19 @@ class ValidatedSectionHeader(SectionHeader):
         section_headers: list[SectionHeader],
     ) -> bool:
         links = {
-            self._SHT_DYNAMIC: [self._SHT_STRTAB],
-            self._SHT_HASH: [self._SHT_DYNSYM],
-            self._SHT_REL: [self._SHT_SYMTAB, self._SHT_DYNSYM],
-            self._SHT_RELA: [self._SHT_SYMTAB, self._SHT_DYNSYM],
-            self._SHT_SYMTAB: [self._SHT_STRTAB],
-            self._SHT_DYNSYM: [self._SHT_STRTAB],
-            self._SHT_GROUP: [self._SHT_SYMTAB, self._SHT_DYNSYM],
-            self._SHT_SYMTAB_SHNDX: [self._SHT_SYMTAB],
-            self._SHT_SUNW_COMDAT: [0],
-            self._SHT_SUNW_SYMINFO: [self._SHT_DYNSYM],
-            self._SHT_SUNW_VERDEF: [self._SHT_STRTAB],
-            self._SHT_SUNW_VERNEED: [self._SHT_STRTAB],
-            self._SHT_SUNW_VERSYM: [self._SHT_DYNSYM],
+            self.SHT_DYNAMIC: [self.SHT_STRTAB],
+            self.SHT_HASH: [self.SHT_DYNSYM],
+            self.SHT_REL: [self.SHT_SYMTAB, self.SHT_DYNSYM],
+            self.SHT_RELA: [self.SHT_SYMTAB, self.SHT_DYNSYM],
+            self.SHT_SYMTAB: [self.SHT_STRTAB],
+            self.SHT_DYNSYM: [self.SHT_STRTAB],
+            self.SHT_GROUP: [self.SHT_SYMTAB, self.SHT_DYNSYM],
+            self.SHT_SYMTAB_SHNDX: [self.SHT_SYMTAB],
+            self.SHT_SUNW_COMDAT: [0],
+            self.SHT_SUNW_SYMINFO: [self.SHT_DYNSYM],
+            self.SHT_SUNW_VERDEF: [self.SHT_STRTAB],
+            self.SHT_SUNW_VERNEED: [self.SHT_STRTAB],
+            self.SHT_SUNW_VERSYM: [self.SHT_DYNSYM],
         }
         if index < 0 or index >= len(section_headers):
             return False
@@ -273,12 +285,12 @@ class ValidatedSectionHeader(SectionHeader):
             value == 0
             if fields["sh_type"]
             in [
-                self._SHT_DYNAMIC,
-                self._SHT_HASH,
-                self._SHT_SYMTAB_SHNDX,
-                self._SHT_SUNW_MOVE,
-                self._SHT_SUNW_COMDAT,
-                self._SHT_SUNW_VERSYM,
+                self.SHT_DYNAMIC,
+                self.SHT_HASH,
+                self.SHT_SYMTAB_SHNDX,
+                self.SHT_SUNW_MOVE,
+                self.SHT_SUNW_COMDAT,
+                self.SHT_SUNW_VERSYM,
             ]
             else True
         )
@@ -292,15 +304,15 @@ class ValidatedSectionHeader(SectionHeader):
             value > 0
             if fields["sh_type"]
             in [
-                self._SHT_SYMTAB,
-                self._SHT_DYNSYM,
-                self._SHT_RELA,
-                self._SHT_REL,
-                self._SHT_DYNAMIC,
-                self._SHT_HASH,
-                self._SHT_SYMTAB_SHNDX,
-                self._SHT_SUNW_SYMINFO,
-                self._SHT_SUNW_VERSYM,
+                self.SHT_SYMTAB,
+                self.SHT_DYNSYM,
+                self.SHT_RELA,
+                self.SHT_REL,
+                self.SHT_DYNAMIC,
+                self.SHT_HASH,
+                self.SHT_SYMTAB_SHNDX,
+                self.SHT_SUNW_SYMINFO,
+                self.SHT_SUNW_VERSYM,
             ]
             else True
         )

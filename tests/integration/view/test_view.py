@@ -62,7 +62,7 @@ def test_printing_section(
 ) -> None:
     expected_output = (
         "Section Header:\n"
-        "  Name: 17 (index in .shstrtab)\n"
+        "  Name: 17\n"
         "  Type: 3\n"
         "  Flags: 0x0\n"
         "  Address: 0x0\n"
@@ -100,7 +100,7 @@ def test_printing_full_section(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     patterns = [
-        r"Section Header:\n\s+Name:\s+\d+ \(index in \.shstrtab\)",
+        r"Section Header:\n\s+Name:\s+\d+",
         r"Type:\s+\d+",
         r"Flags:\s+0x[0-9a-fA-F]+",
         r"Address:\s+0x[0-9a-fA-F]+",

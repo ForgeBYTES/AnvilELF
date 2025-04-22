@@ -431,3 +431,30 @@ def test_raising_on_replacing_section_data_with_invalid_size(
 
     with pytest.raises(ValueError, match="Invalid section size"):
         sections.find(".shstrtab").replace(b"invalid size")
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/binaries/binary-with-stripped-section-header-table-index"],
+    indirect=True,
+)
+def test_returning_sh_name_only_on_stripped_section_header_table_index(
+    raw_data: bytearray,
+) -> None:
+    # fmt: off
+    expected_section_names = [
+        "0", "27", "35", "54", "73", "87", "97", "105", "113", "126", "141",
+        "151", "161", "156", "167", "176", "185", "191", "197", "205", "219",
+        "229", "241", "253", "171", "262", "268", "273", "1", "9", "17",
+    ]
+    # fmt: on
+
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+        RawExecutableHeader(raw_data),
+    )
+
+    assert [
+        section.name() for section in sections.all()
+    ] == expected_section_names

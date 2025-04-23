@@ -37,7 +37,7 @@ class Sections(ABC):
 
 class StringTable(ABC):
     @abstractmethod
-    def name_by_index(self, sh_name: int) -> str:
+    def name_by_offset(self, offset: int) -> str:
         pass  # pragma: no cover
 
 
@@ -155,6 +155,7 @@ class RawSection(Section):
 
     def raw_data(self) -> memoryview:
         fields = self.__section_header.fields()
+        self.__validate_range(fields)
         return memoryview(self.__raw_data)[
             fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
             + fields["sh_size"]
@@ -162,7 +163,7 @@ class RawSection(Section):
 
     def replace(self, data: bytes) -> None:
         fields = self.__section_header.fields()
-        self.__validate_size(data, fields)
+        self.__validate_data(data, fields)
         self.__raw_data[
             fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
             + fields["sh_size"]
@@ -170,12 +171,17 @@ class RawSection(Section):
 
     def name(self) -> str:
         if self.__shstrtab is not None:
-            return self.__shstrtab.name_by_index(
+            return self.__shstrtab.name_by_offset(
                 self.__section_header.fields()["sh_name"]
             )
         return str(self.__section_header.fields()["sh_name"])
 
-    def __validate_size(self, data: bytes, fields: dict[str, int]) -> None:
+    def __validate_range(self, fields: dict[str, int]) -> None:
+        if fields["sh_offset"] + fields["sh_size"] > len(self.__raw_data):
+            raise ValueError("Exceeded section size")
+
+    def __validate_data(self, data: bytes, fields: dict[str, int]) -> None:
+        self.__validate_range(fields)
         if len(data) != fields["sh_size"]:
             raise ValueError("Invalid section size")
 
@@ -184,11 +190,19 @@ class RawStringTable(StringTable):
     def __init__(self, origin: Section):
         self.__origin = origin
 
-    def name_by_index(self, sh_name: int) -> str:
+    def name_by_offset(self, offset: int) -> str:
         data = self.__origin.raw_data().tobytes()
-        return data[
-            sh_name : data.find(b"\x00", sh_name)  # noqa: E203
-        ].decode("ascii")
+        return self.__name_or_fallback(
+            data, offset, data.find(b"\x00", offset)
+        )
+
+    def __name_or_fallback(self, data: bytes, offset: int, end: int) -> str:
+        if self.__is_valid_range(offset, end, data):
+            return data[offset:end].decode("ascii", errors="replace")
+        return str(offset)
+
+    def __is_valid_range(self, offset: int, end: int, data: bytes) -> bool:
+        return 0 <= offset < len(data) and end != -1
 
 
 class RawSections(Sections):
@@ -269,7 +283,7 @@ class RawSymbol(Symbol):
             raise ValueError("Unable to process data")
 
     def name(self) -> str:
-        return self.__string_table.name_by_index(self.fields()["st_name"])
+        return self.__string_table.name_by_offset(self.fields()["st_name"])
 
     def bind(self) -> int:
         return int(self.fields()["st_info"] >> 4)

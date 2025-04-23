@@ -44,9 +44,17 @@ def test_printing_executable_header(
         "  ABI Version: 0\n"
         "  Type: 3\n"
         "  Machine: 62\n"
+        "  Version: 1\n"
         "  Entry point: 0x1260\n"
+        "  Start of program headers: 0x40\n"
         "  Start of section headers: 0x4b20\n"
+        "  Flags: 0\n"
+        "  ELF header size: 64 bytes\n"
+        "  Program header entry size: 56\n"
+        "  Number of program headers: 13\n"
+        "  Section header entry size: 64\n"
         "  Number of section headers: 39\n"
+        "  Section header string table index: 38\n"
     )
 
     PrintableExecutableHeader(RawExecutableHeader(raw_data)).print()

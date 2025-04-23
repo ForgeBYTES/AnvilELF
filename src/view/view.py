@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Any
 
 from src.elf.executable_header import ExecutableHeader
 from src.elf.section import Disassembly, Section, Sections, Symbol, SymbolTable
@@ -17,24 +16,33 @@ class PrintableExecutableHeader(Printable):
 
     def print(self) -> None:
         fields = self.__executable_header.fields()
+        e_ident = fields["e_ident"]
         print(
             "Executable Header:",
-            f"  Magic: {self.__magic(fields)}",
-            f"  Class: {fields['e_ident']['EI_CLASS']}",
-            f"  Data: {fields['e_ident']['EI_DATA']}",
-            f"  Version: {fields['e_ident']['EI_VERSION']}",
-            f"  OS/ABI: {fields['e_ident']['EI_OSABI']}",
-            f"  ABI Version: {fields['e_ident']['EI_ABIVERSION']}",
+            f"  Magic: {self.__magic(e_ident['EI_MAG'])}",
+            f"  Class: {e_ident['EI_CLASS']}",
+            f"  Data: {e_ident['EI_DATA']}",
+            f"  Version: {e_ident['EI_VERSION']}",
+            f"  OS/ABI: {e_ident['EI_OSABI']}",
+            f"  ABI Version: {e_ident['EI_ABIVERSION']}",
             f"  Type: {fields['e_type']}",
             f"  Machine: {fields['e_machine']}",
+            f"  Version: {fields['e_version']}",
             f"  Entry point: 0x{fields['e_entry']:x}",
+            f"  Start of program headers: 0x{fields['e_phoff']:x}",
             f"  Start of section headers: 0x{fields['e_shoff']:x}",
+            f"  Flags: {fields['e_flags']}",
+            f"  ELF header size: {fields['e_ehsize']} bytes",
+            f"  Program header entry size: {fields['e_phentsize']}",
+            f"  Number of program headers: {fields['e_phnum']}",
+            f"  Section header entry size: {fields['e_shentsize']}",
             f"  Number of section headers: {fields['e_shnum']}",
+            f"  Section header string table index: {fields['e_shstrndx']}",
             sep="\n",
         )
 
-    def __magic(self, fields: dict[str, Any]) -> str:
-        return " ".join(f"{byte:02x}" for byte in fields["e_ident"]["EI_MAG"])
+    def __magic(self, ei_mag: bytes) -> str:
+        return " ".join(f"{byte:02x}" for byte in ei_mag)
 
 
 class PrintableSection(Printable):
@@ -44,11 +52,8 @@ class PrintableSection(Printable):
 
     def print(self) -> None:
         header = self.__section.header()
-        data = (
-            self.__section.raw_data()
-            if self.__full
-            else self.__section.raw_data()[:32]
-        )
+        data = self.__data()
+        suffix = self.__truncation_suffix(data)
         print(
             "Section Header:",
             f"  Name: {header['sh_name']}",
@@ -63,23 +68,27 @@ class PrintableSection(Printable):
             f"  Section entry size: {header['sh_entsize']}",
             "Section:",
             f"  Name: {self.__section.name()}",
-            f"  Data: "
-            f"{self.__hex_dump(data.tobytes())}{self.__dots(self.__full)}",
-            f"  ASCII: "
-            f"{self.__ascii_dump(data.tobytes())}{self.__dots(self.__full)}",
+            f"  Data: {self.__hex_dump(data)}{suffix}",
+            f"  ASCII: {self.__ascii_dump(data)}{suffix}",
             sep="\n",
         )
 
+    def __data(self) -> bytes:
+        data = self.__section.raw_data()
+        return data.tobytes() if self.__full else data[:32].tobytes()
+
     def __hex_dump(self, data: bytes) -> str:
-        return " ".join(f"{byte:02x}" for byte in data)
+        return " ".join(f"{byte:02x}" for byte in data) if data else "---"
 
     def __ascii_dump(self, data: bytes) -> str:
-        return "".join(
-            chr(byte) if 32 <= byte <= 126 else "." for byte in data
+        return (
+            "".join(chr(b) if 32 <= b <= 126 else "." for b in data)
+            if data
+            else "---"
         )
 
-    def __dots(self, full: bool) -> str:
-        return " ..." if not full else ""
+    def __truncation_suffix(self, data: bytes) -> str:
+        return " ..." if not self.__full and data else ""
 
 
 class PrintableSections(Printable):
@@ -89,15 +98,15 @@ class PrintableSections(Printable):
 
     def print(self) -> None:
         if self.__full:
-            self.__full_print(self.__sections)
+            self.__print_full(self.__sections)
         else:
-            self.__simple_print(self.__sections)
+            self.__print_simple(self.__sections)
 
-    def __simple_print(self, sections: Sections) -> None:
+    def __print_simple(self, sections: Sections) -> None:
         for index, section in enumerate(sections.all()):
             print(f"{f'[{index}]':>4} {section.name()}")
 
-    def __full_print(self, sections: Sections) -> None:
+    def __print_full(self, sections: Sections) -> None:
         print(
             f"{'Idx':<4} {'Name':<20} {'Type':<10} {'Flags':<10} "
             f"{'Address':<12} {'Offset':<10} {'Size':<6} "

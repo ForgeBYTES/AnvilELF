@@ -155,6 +155,7 @@ class RawSection(Section):
 
     def raw_data(self) -> memoryview:
         fields = self.__section_header.fields()
+        self.__validate_range(fields)
         return memoryview(self.__raw_data)[
             fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
             + fields["sh_size"]
@@ -162,7 +163,7 @@ class RawSection(Section):
 
     def replace(self, data: bytes) -> None:
         fields = self.__section_header.fields()
-        self.__validate_size(data, fields)
+        self.__validate_data(data, fields)
         self.__raw_data[
             fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
             + fields["sh_size"]
@@ -175,7 +176,12 @@ class RawSection(Section):
             )
         return str(self.__section_header.fields()["sh_name"])
 
-    def __validate_size(self, data: bytes, fields: dict[str, int]) -> None:
+    def __validate_range(self, fields: dict[str, int]) -> None:
+        if fields["sh_offset"] + fields["sh_size"] > len(self.__raw_data):
+            raise ValueError("Exceeded section size")
+
+    def __validate_data(self, data: bytes, fields: dict[str, int]) -> None:
+        self.__validate_range(fields)
         if len(data) != fields["sh_size"]:
             raise ValueError("Invalid section size")
 

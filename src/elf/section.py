@@ -155,15 +155,19 @@ class RawSection(Section):
 
     def raw_data(self) -> memoryview:
         fields = self.__section_header.fields()
-        self.__validate_range(fields)
-        return memoryview(self.__raw_data)[
-            fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
-            + fields["sh_size"]
-        ]
+        if self.__is_in_range(fields):
+            return memoryview(self.__raw_data)[
+                fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
+                + fields["sh_size"]
+            ]
+        raise ValueError("Exceeded section size")
 
     def replace(self, data: bytes) -> None:
         fields = self.__section_header.fields()
-        self.__validate_data(data, fields)
+        if not (
+            self.__is_in_range(fields) and self.__is_correct_size(data, fields)
+        ):
+            raise ValueError("Invalid section size")
         self.__raw_data[
             fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
             + fields["sh_size"]
@@ -176,14 +180,11 @@ class RawSection(Section):
             )
         return str(self.__section_header.fields()["sh_name"])
 
-    def __validate_range(self, fields: dict[str, int]) -> None:
-        if fields["sh_offset"] + fields["sh_size"] > len(self.__raw_data):
-            raise ValueError("Exceeded section size")
+    def __is_in_range(self, fields: dict[str, int]) -> bool:
+        return fields["sh_offset"] + fields["sh_size"] <= len(self.__raw_data)
 
-    def __validate_data(self, data: bytes, fields: dict[str, int]) -> None:
-        self.__validate_range(fields)
-        if len(data) != fields["sh_size"]:
-            raise ValueError("Invalid section size")
+    def __is_correct_size(self, data: bytes, fields: dict[str, int]) -> bool:
+        return len(data) == fields["sh_size"]
 
 
 class RawStringTable(StringTable):
@@ -197,11 +198,11 @@ class RawStringTable(StringTable):
         )
 
     def __name_or_fallback(self, data: bytes, offset: int, end: int) -> str:
-        if self.__is_valid_range(offset, end, data):
+        if self.__is_in_range(offset, end, data):
             return data[offset:end].decode("ascii", errors="replace")
         return str(offset)
 
-    def __is_valid_range(self, offset: int, end: int, data: bytes) -> bool:
+    def __is_in_range(self, offset: int, end: int, data: bytes) -> bool:
         return 0 <= offset < len(data) and end != -1
 
 

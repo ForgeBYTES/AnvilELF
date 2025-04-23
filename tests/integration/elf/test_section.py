@@ -184,7 +184,7 @@ def test_returning_shstrtab_name_by_index(raw_data: bytearray) -> None:
             section_headers.all()[executable_header.fields()["e_shstrndx"]],
         )
     )
-    assert shstrtab.name_by_index(17) == ".shstrtab"
+    assert shstrtab.name_by_offset(17) == ".shstrtab"
 
 
 @pytest.mark.parametrize(
@@ -491,3 +491,25 @@ def test_returning_sh_name_only_on_stripped_section_header_table_index(
     assert [
         section.name() for section in sections.all()
     ] == expected_section_names
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_returning_offset_from_string_table_on_exceeding_range(
+    raw_data: bytearray,
+) -> None:
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    shstrtab = sections.find(".shstrtab")
+
+    maximum_offset = len(shstrtab.raw_data())
+
+    assert RawStringTable(shstrtab).name_by_offset(maximum_offset) == str(
+        maximum_offset
+    )

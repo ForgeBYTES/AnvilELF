@@ -14,7 +14,6 @@ Inspect your binary ⚒️
 Forge your binary 🔥
 """
 
-usage = "Usage: python main.py <binary>"
 hint = """
 header                        Show executable header
 sections [--full]             List all sections
@@ -29,4 +28,4 @@ exit                          Exit the shell
 """
 
 if __name__ == "__main__":  # pragma: no cover
-    Application(sys.argv, intro, usage, hint).command_line().run()
+    Application(sys.argv, intro, hint).command_line().run()

@@ -1,13 +1,14 @@
-import argparse
 from abc import ABC, abstractmethod
-from typing import Never
+from argparse import Namespace
 
+from src.control.argument import ArgumentParser
 from src.elf.executable_header import ExecutableHeader
 from src.elf.section import (
     RawDisassembly,
     RawStringTable,
     RawSymbolTable,
     Sections,
+    SymbolTable,
     ValidatedSymbolTable,
 )
 from src.view.view import (
@@ -27,11 +28,6 @@ class Command(ABC):
     @abstractmethod
     def execute(self, raw_arguments: list[str]) -> None:
         pass  # pragma: no cover
-
-
-class ArgumentParser(argparse.ArgumentParser):
-    def error(self, message: str) -> Never:
-        raise ValueError(f"Invalid arguments: {message}")
 
 
 class ExecutableHeaderCommand(Command):
@@ -57,15 +53,13 @@ class SectionsCommand(Command):
         return self.__NAME
 
     def execute(self, raw_arguments: list[str]) -> None:
-        arguments = self.__argument_parser(self.__NAME).parse_args(
-            raw_arguments
-        )
+        arguments = self.__arguments(self.__NAME, raw_arguments)
         PrintableSections(self.__sections, full=arguments.full).print()
 
-    def __argument_parser(self, name: str) -> ArgumentParser:
+    def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
         parser.add_argument("-f", "--full", action="store_true")
-        return parser
+        return parser.parse_args(raw_arguments)
 
 
 class SectionCommand(Command):
@@ -78,18 +72,16 @@ class SectionCommand(Command):
         return self.__NAME
 
     def execute(self, raw_arguments: list[str]) -> None:
-        arguments = self.__argument_parser(self.__NAME).parse_args(
-            raw_arguments
-        )
+        arguments = self.__arguments(self.__NAME, raw_arguments)
         PrintableSection(
             self.__sections.find(arguments.name), arguments.full
         ).print()
 
-    def __argument_parser(self, name: str) -> ArgumentParser:
+    def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
         parser.add_argument("-n", "--name", required=True)
         parser.add_argument("-f", "--full", action="store_true", default=False)
-        return parser
+        return parser.parse_args(raw_arguments)
 
 
 class TextCommand(Command):
@@ -102,20 +94,18 @@ class TextCommand(Command):
         return self.__NAME
 
     def execute(self, raw_arguments: list[str]) -> None:
-        arguments = self.__argument_parser(self.__NAME).parse_args(
-            raw_arguments
-        )
+        arguments = self.__arguments(self.__NAME, raw_arguments)
         PrintableDisassembly(
             RawDisassembly(self.__sections.find(".text")),
             arguments.offset,
             arguments.size,
         ).print()
 
-    def __argument_parser(self, name: str) -> ArgumentParser:
+    def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
         parser.add_argument("-o", "--offset", type=int, default=0)
         parser.add_argument("-s", "--size", type=int)
-        return parser
+        return parser.parse_args(raw_arguments)
 
 
 class StringTableCommand(Command):
@@ -125,37 +115,52 @@ class StringTableCommand(Command):
         command_name: str,
         section_name: str,
         string_table_name: str,
+        validated: bool = False,
     ):
         self.__sections = sections
         self.__command_name = command_name
         self.__section_name = section_name
         self.__string_table_name = string_table_name
+        self.__validated = validated
 
     def name(self) -> str:
         return self.__command_name
 
     def execute(self, raw_arguments: list[str]) -> None:
         PrintableSymbolTable(
-            ValidatedSymbolTable(
-                RawSymbolTable(
-                    self.__sections.find(self.__section_name),
-                    RawStringTable(
-                        self.__sections.find(self.__string_table_name)
-                    ),
-                )
+            self.__symbol_table(
+                self.__sections,
+                self.__section_name,
+                self.__string_table_name,
+                self.__validated,
             ),
             self.__section_name,
         ).print()
 
+    def __symbol_table(
+        self,
+        sections: Sections,
+        section_name: str,
+        string_table_name: str,
+        validated: bool,
+    ) -> SymbolTable:
+        symbol_table = RawSymbolTable(
+            sections.find(section_name),
+            RawStringTable(sections.find(string_table_name)),
+        )
+        if validated:
+            return ValidatedSymbolTable(symbol_table)
+        return symbol_table
+
 
 class DynsymCommand(StringTableCommand):
-    def __init__(self, sections: Sections):
-        super().__init__(sections, "dynsym", ".dynsym", ".dynstr")
+    def __init__(self, sections: Sections, validated: bool = False):
+        super().__init__(sections, "dynsym", ".dynsym", ".dynstr", validated)
 
 
 class SymtabCommand(StringTableCommand):
-    def __init__(self, sections: Sections):
-        super().__init__(sections, "symtab", ".symtab", ".strtab")
+    def __init__(self, sections: Sections, validated: bool = False):
+        super().__init__(sections, "symtab", ".symtab", ".strtab", validated)
 
 
 class DisassemblyCommand(Command):

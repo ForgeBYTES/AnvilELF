@@ -195,41 +195,43 @@ class ValidatedSectionHeader(SectionHeader):
         fields: dict[str, int],
         section_headers: SectionHeaders,
     ) -> None:
+        invalid_fields: list[str] = []
         for field, value in fields.items():
             match field:
                 case "sh_type":
-                    if self.__is_valid_type(value):
-                        continue
+                    if not self.__is_valid_type(value):
+                        invalid_fields.append(field)
                 case "sh_flags":
-                    if value & ~self.FLAGS == 0:
-                        continue
+                    if value & ~self.FLAGS != 0:
+                        invalid_fields.append(field)
                 case "sh_addralign":
-                    if self.__is_power_of_two(value):
-                        continue
+                    if not self.__is_power_of_two(value):
+                        invalid_fields.append(field)
                 case "sh_size" | "sh_offset":
-                    if value >= 0:
-                        continue
+                    if value < 0:
+                        invalid_fields.append(field)
                 case "sh_addr":
-                    if self.__is_sh_addr_aligned(value, fields):
-                        continue
+                    if not self.__is_sh_addr_aligned(value, fields):
+                        invalid_fields.append(field)
                 case "sh_link":
-                    if self.__is_sh_link_valid(
-                        value,
-                        fields,
-                        section_headers.all(),
+                    if not self.__is_sh_link_valid(
+                        value, fields, section_headers.all()
                     ):
-                        continue
+                        invalid_fields.append(field)
                 case "sh_info":
-                    if self.__is_sh_info_valid(value, fields):
-                        continue
+                    if not self.__is_sh_info_valid(value, fields):
+                        invalid_fields.append(field)
                 case "sh_entsize":
-                    if self.__is_sh_entsize_valid(value, fields):
-                        continue
+                    if not self.__is_sh_entsize_valid(value, fields):
+                        invalid_fields.append(field)
                 case _:
-                    self.__validate_field_exists(field, self.FIELDS)
-                    continue
-
-            raise ValueError(f"Invalid value for {field}: {value}")
+                    if field not in self.FIELDS:
+                        invalid_fields.append(field)
+        if invalid_fields:
+            raise ValueError(
+                f"Section header ({fields['sh_name']}) contains "
+                f"invalid fields: {', '.join(invalid_fields)}"
+            )
 
     def __is_valid_type(self, sh_type: int) -> bool:
         return (
@@ -320,10 +322,6 @@ class ValidatedSectionHeader(SectionHeader):
             ]
             else True
         )
-
-    def __validate_field_exists(self, field: str, fields: list[str]) -> None:
-        if field not in fields:
-            raise ValueError(f"Unknown field {field}")
 
 
 class ValidatedSectionHeaders(SectionHeaders):

@@ -1,3 +1,6 @@
+from argparse import Namespace
+
+from src.control.argument import ArgumentParser
 from src.control.command import (
     DynsymCommand,
     ExecutableHeaderCommand,
@@ -14,26 +17,22 @@ from src.control.command_line import (
     HistoricalCommandLine,
     InteractiveCommandLine,
 )
-from src.elf.binary import RawBinary
+from src.elf.binary import Binary, RawBinary, ValidatedBinary
 
 
 class Application:
-    __BINARY_PATH = 1
-
-    def __init__(self, argv: list[str], intro: str, usage: str, hint: str):
+    def __init__(self, argv: list[str], intro: str, hint: str):
         self.__argv = argv
         self.__intro = intro
-        self.__usage = usage
         self.__hint = hint
 
     def command_line(self) -> CommandLine:
         try:
             print(self.__intro)
-
-            executable_header, section_headers, sections = RawBinary(
-                self.__binary_path(self.__argv)
+            arguments = self.__arguments(self.__argv)
+            executable_header, section_headers, sections = self.__binary(
+                arguments
             ).components()
-
             return HistoricalCommandLine(
                 InteractiveCommandLine(
                     self.__hint,
@@ -45,8 +44,8 @@ class Application:
                         PltCommand(sections),
                         InitCommand(sections),
                         FiniCommand(sections),
-                        SymtabCommand(sections),
-                        DynsymCommand(sections),
+                        SymtabCommand(sections, arguments.validate),
+                        DynsymCommand(sections, arguments.validate),
                     ],
                 )
             )
@@ -54,9 +53,15 @@ class Application:
             print(error)
             raise SystemExit(1)
 
-    def __binary_path(self, argv: list[str]) -> str:
-        try:
-            return argv[self.__BINARY_PATH]
-        except IndexError:
-            print(self.__usage)
-            raise SystemExit(1)
+    def __binary(self, arguments: Namespace) -> Binary:
+        return (
+            ValidatedBinary(RawBinary(arguments.binary))
+            if arguments.validate
+            else RawBinary(arguments.binary)
+        )
+
+    def __arguments(self, argv: list[str]) -> Namespace:
+        parser = ArgumentParser(add_help=False)
+        parser.add_argument("binary")
+        parser.add_argument("-v", "--validate", action="store_true")
+        return parser.parse_args(argv[1:])

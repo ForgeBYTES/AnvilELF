@@ -49,7 +49,7 @@ def test_printing_executable_header(
         "  Start of program headers: 0x40\n"
         "  Start of section headers: 0x4b20\n"
         "  Flags: 0\n"
-        "  ELF header size: 64 bytes\n"
+        "  Executable header size: 64 bytes\n"
         "  Program header entry size: 56\n"
         "  Number of program headers: 13\n"
         "  Section header entry size: 64\n"
@@ -201,7 +201,7 @@ def test_printing_full_sections(
             re.compile(
                 (
                     r"^\[\d+]\s+"
-                    r"(?:\.\S+|\s+)\s+"
+                    r"(?:\.\S+(?: \(\d+\))?|\(\d+\)|\s+)\s+"
                     r"\d+\s+"
                     r"0x[0-9a-fA-F]+\s+"
                     r"0x[0-9a-fA-F]+\s+"

@@ -322,25 +322,25 @@ class ValidatedSymbol(Symbol):
         return self.__origin.visibility()
 
     def __validate(self, fields: dict[str, int]) -> None:
+        invalid_fields: list[str] = []
         for field, value in fields.items():
             match field:
                 case "st_info":
                     _type = value & 0xF
                     bind = value >> 4
-                    if bind in self.BINDS and _type in self.TYPES:
-                        continue
+                    if bind not in self.BINDS or _type not in self.TYPES:
+                        invalid_fields.append(field)
                 case "st_shndx":
-                    if 0 <= value <= 0xFFFF:
-                        continue
+                    if not (0 <= value <= 0xFFFF):
+                        invalid_fields.append(field)
                 case _:
-                    self.__validate_field_exists(field, self.FIELDS)
-                    continue
-
-            raise ValueError(f"Invalid value for {field}")
-
-    def __validate_field_exists(self, field: str, fields: list[str]) -> None:
-        if field not in fields:
-            raise ValueError(f"Unknown field {field}")
+                    if field not in self.FIELDS:
+                        invalid_fields.append(field)
+        if invalid_fields:
+            raise ValueError(
+                f"Symbol ({self.name()}) contains "
+                f"invalid fields: {', '.join(invalid_fields)}"
+            )
 
 
 class RawSymbolTable(SymbolTable):

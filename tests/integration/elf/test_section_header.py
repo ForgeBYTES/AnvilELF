@@ -1,3 +1,4 @@
+import re
 from typing import Callable
 
 import pytest
@@ -184,19 +185,43 @@ def test_returning_all_section_headers(raw_data: bytearray) -> None:
 @pytest.mark.parametrize(
     "field, value, error_message",
     [
-        ("sh_type", 20, "Invalid value for sh_type"),
-        ("sh_flags", 0xDEADBEEF, "Invalid value for sh_flags"),
-        ("sh_addralign", 3, "Invalid value for sh_addralign"),
-        ("sh_size", -1, "Invalid value for sh_size"),
-        ("sh_offset", -1, "Invalid value for sh_offset"),
-        ("sh_link", -1, "Invalid value for sh_link"),
-        ("invalid", 2, "Unknown field invalid"),
+        (
+            "sh_type",
+            20,
+            "Section header (27) contains invalid fields: sh_type",
+        ),
+        (
+            "sh_flags",
+            0xDEADBEEF,
+            "Section header (27) contains invalid fields: sh_flags",
+        ),
+        (
+            "sh_addralign",
+            3,
+            "Section header (27) contains invalid fields: sh_addralign",
+        ),
+        (
+            "sh_size",
+            -1,
+            "Section header (27) contains invalid fields: sh_size",
+        ),
+        (
+            "sh_offset",
+            -1,
+            "Section header (27) contains invalid fields: sh_offset",
+        ),
+        (
+            "sh_link",
+            -1,
+            "Section header (27) contains invalid fields: sh_link",
+        ),
+        ("invalid", 2, "Section header (27) contains invalid fields: invalid"),
     ],
 )
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_changing_invalid_field_values(
+def test_raising_on_changing_field_with_invalid_value(
     raw_data: bytearray,
     expected_offset: int,
     expected_data: dict[str, int],
@@ -208,7 +233,7 @@ def test_raising_on_changing_invalid_field_values(
 
     expected_data[field] = value
 
-    with pytest.raises(ValueError, match=error_message):
+    with pytest.raises(ValueError, match=re.escape(error_message)):
         ValidatedSectionHeader(
             RawSectionHeader(
                 raw_data=raw_data, offset=offset + expected_offset
@@ -241,7 +266,12 @@ def test_raising_on_nonzero_sh_info_in_sht_dynamic(
 
     expected_data["sh_info"] = 18
 
-    with pytest.raises(ValueError, match="Invalid value for sh_info"):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Section header (253) contains invalid fields: sh_info"
+        ),
+    ):
         ValidatedSectionHeader(
             RawSectionHeader(
                 raw_data=raw_data, offset=offset + (sht_dynamic_index * 64)
@@ -274,7 +304,12 @@ def test_raising_on_zero_sh_entsize_in_sht_dynamic(
 
     expected_data["sh_entsize"] = 0
 
-    with pytest.raises(ValueError, match="Invalid value for sh_entsize"):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Section header (253) contains invalid fields: sh_entsize"
+        ),
+    ):
         ValidatedSectionHeader(
             RawSectionHeader(
                 raw_data=raw_data, offset=offset + (sht_dynamic_index * 64)
@@ -319,8 +354,43 @@ def test_changing_sh_addr_alignment(
     if should_pass:
         section_header.change(expected_data)
     else:
-        with pytest.raises(ValueError, match="Invalid value for sh_addr"):
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "Section header (27) contains invalid fields: sh_addr"
+            ),
+        ):
             section_header.change(expected_data)
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_changing_invalid_field_values(
+    raw_data: bytearray,
+    expected_offset: int,
+    expected_data: dict[str, int],
+) -> None:
+    offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
+
+    expected_data["sh_type"] = 20
+    expected_data["sh_flags"] = 0xDEADBEEF
+    expected_data["sh_addralign"] = 3
+    expected_data["sh_size"] = -1
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Section header (27) contains invalid fields: "
+            "sh_type, sh_flags, sh_size, sh_addralign"
+        ),
+    ):
+        ValidatedSectionHeader(
+            RawSectionHeader(
+                raw_data=raw_data, offset=offset + expected_offset
+            ),
+            RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
+        ).change(expected_data)
 
 
 @pytest.mark.parametrize(

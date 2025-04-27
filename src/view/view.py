@@ -32,7 +32,7 @@ class PrintableExecutableHeader(Printable):
             f"  Start of program headers: 0x{fields['e_phoff']:x}",
             f"  Start of section headers: 0x{fields['e_shoff']:x}",
             f"  Flags: {fields['e_flags']}",
-            f"  ELF header size: {fields['e_ehsize']} bytes",
+            f"  Executable header size: {fields['e_ehsize']} bytes",
             f"  Program header entry size: {fields['e_phentsize']}",
             f"  Number of program headers: {fields['e_phnum']}",
             f"  Section header entry size: {fields['e_shentsize']}",
@@ -52,7 +52,7 @@ class PrintableSection(Printable):
 
     def print(self) -> None:
         header = self.__section.header()
-        data = self.__data()
+        data = self.__data(self.__section)
         suffix = self.__truncation_suffix(data)
         print(
             "Section Header:",
@@ -73,8 +73,8 @@ class PrintableSection(Printable):
             sep="\n",
         )
 
-    def __data(self) -> bytes:
-        data = self.__section.raw_data()
+    def __data(self, section: Section) -> bytes:
+        data = section.raw_data()
         return data.tobytes() if self.__full else data[:32].tobytes()
 
     def __hex_dump(self, data: bytes) -> str:
@@ -108,7 +108,7 @@ class PrintableSections(Printable):
 
     def __print_full(self, sections: Sections) -> None:
         print(
-            f"{'Idx':<4} {'Name':<20} {'Type':<10} {'Flags':<10} "
+            f"{'Idx':<4} {'Name':<25} {'Type':<10} {'Flags':<10} "
             f"{'Address':<12} {'Offset':<10} {'Size':<6} "
             f"{'Link':<5} {'Info':<5} {'Align':<6} {'ES':<3}"
         )
@@ -116,7 +116,7 @@ class PrintableSections(Printable):
             header = section.header()
             print(
                 f"{f'[{index}]':<4} "
-                f"{section.name():<20} "
+                f"{self.__name(section, header):<25} "
                 f"{header['sh_type']:<10} "
                 f"0x{header['sh_flags']:08x} "
                 f"0x{header['sh_addr']:08x}   "
@@ -127,6 +127,12 @@ class PrintableSections(Printable):
                 f"{header['sh_addralign']:<6} "
                 f"{header['sh_entsize']:<3}"
             )
+
+    def __name(self, section: Section, header: dict[str, int]) -> str:
+        name = section.name()
+        if name == "" or name == str(header["sh_name"]):
+            return name
+        return f"{name} ({header['sh_name']})"
 
 
 class PrintableSymbolTable(Printable):
@@ -189,13 +195,17 @@ class PrintableDisassembly(Printable):
         self.__size = size
 
     def print(self) -> None:
-        for line in self.__assembly(self.__offset, self.__size):
-            print(line)
+        for instruction in self.__instructions(
+            self.__disassembly, self.__offset, self.__size
+        ):
+            print(instruction)
 
-    def __assembly(self, offset: int, size: int) -> list[str]:
-        assembly = self.__disassembly.instructions()
+    def __instructions(
+        self, disassembly: Disassembly, offset: int, size: int
+    ) -> list[str]:
+        instructions = disassembly.instructions()
         return (
-            assembly[offset : offset + size]  # noqa: E203
+            instructions[offset : offset + size]  # noqa: E203
             if size
-            else assembly[offset:]
+            else instructions[offset:]
         )

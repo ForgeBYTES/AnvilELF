@@ -139,61 +139,58 @@ class ValidatedExecutableHeader(ExecutableHeader):
         )
 
     def __validate(self, fields: dict[str, Any]) -> None:
+        invalid_fields: list[str] = []
         for field, value in fields.items():
             match field:
                 case "e_ident":
-                    self.__validate_e_ident(value)
-                    continue
+                    invalid_fields.extend(self.__invalid_e_ident(value))
                 case "e_type":
-                    if value in self._TYPES:
-                        continue
+                    if value not in self._TYPES:
+                        invalid_fields.append(field)
                 case "e_entry":
-                    if value > 0:
-                        continue
+                    if value <= 0:
+                        invalid_fields.append(field)
                 case "e_phoff" | "e_shoff":
-                    if self.__is_aligned(value):
-                        continue
+                    if not self.__is_aligned(value):
+                        invalid_fields.append(field)
                 case "e_ehsize":
-                    if value == 64:
-                        continue
+                    if value != 64:
+                        invalid_fields.append(field)
                 case "e_shentsize":
-                    if value in [0, 64]:
-                        continue
+                    if value not in [0, 64]:
+                        invalid_fields.append(field)
                 case "e_phentsize":
-                    if value in [0, 56]:
-                        continue
+                    if value not in [0, 56]:
+                        invalid_fields.append(field)
                 case "e_flags":
-                    self.__validate_e_flags(value, fields)
-                    continue
+                    if fields["e_machine"] == self._EM_X86_64 and value != 0:
+                        invalid_fields.append(field)
                 case _:
-                    self.__validate_field_exists(field, self._FIELDS)
-                    continue
-            raise ValueError(f"Invalid value for {field}")
+                    if field not in self._FIELDS:
+                        invalid_fields.append(field)
+        if invalid_fields:
+            raise ValueError(
+                f"Executable header contains "
+                f"invalid fields: {', '.join(invalid_fields)}"
+            )
 
-    def __validate_e_ident(self, fields: dict[str, Any]) -> None:
+    def __invalid_e_ident(self, fields: dict[str, Any]) -> list[str]:
+        invalid_fields: list[str] = []
         for field, value in fields.items():
             match field:
                 case "EI_MAG":
-                    if value == self._MAGIC_VALUE:
-                        continue
+                    if value != self._MAGIC_VALUE:
+                        invalid_fields.append(field)
                 case "EI_DATA":
-                    if value in self._ENDIANNESS:
-                        continue
+                    if value not in self._ENDIANNESS:
+                        invalid_fields.append(field)
                 case "EI_VERSION":
-                    if value == 1:
-                        continue
+                    if value != 1:
+                        invalid_fields.append(field)
                 case _:
-                    self.__validate_field_exists(field, self._E_INDENT_FIELDS)
-                    continue
-            raise ValueError(f"Invalid value for {field}")
+                    if field not in self._E_INDENT_FIELDS:
+                        invalid_fields.append(field)
+        return invalid_fields
 
     def __is_aligned(self, offset: int) -> bool:
         return offset >= 0 and offset % 8 == 0
-
-    def __validate_e_flags(self, e_flags: int, fields: dict[str, Any]) -> None:
-        if fields["e_machine"] == self._EM_X86_64 and e_flags != 0:
-            raise ValueError("Nonzero e_flags unexpected for x86-64")
-
-    def __validate_field_exists(self, field: str, fields: list[str]) -> None:
-        if field not in fields:
-            raise ValueError(f"Unknown field {field}")

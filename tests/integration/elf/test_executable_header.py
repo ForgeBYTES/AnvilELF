@@ -152,7 +152,9 @@ def test_raising_on_32bit_type(raw_data: bytearray) -> None:
 def test_raising_on_getting_fields_with_malformed_ei_data(
     raw_data: bytearray,
 ) -> None:
-    with pytest.raises(ValueError, match="Invalid value for EI_DATA"):
+    with pytest.raises(
+        ValueError, match="Executable header contains invalid fields: EI_DATA"
+    ):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
 
@@ -164,7 +166,10 @@ def test_raising_on_getting_fields_with_malformed_ei_data(
 def test_raising_on_getting_fields_with_malformed_ei_version(
     raw_data: bytearray,
 ) -> None:
-    with pytest.raises(ValueError, match="Invalid value for EI_VERSION"):
+    with pytest.raises(
+        ValueError,
+        match="Executable header contains invalid fields: EI_VERSION",
+    ):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
 
@@ -176,7 +181,9 @@ def test_raising_on_getting_fields_with_malformed_ei_version(
 def test_raising_on_getting_fields_with_malformed_e_type(
     raw_data: bytearray,
 ) -> None:
-    with pytest.raises(ValueError, match="Invalid value for e_type"):
+    with pytest.raises(
+        ValueError, match="Executable header contains invalid fields: e_type"
+    ):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).fields()
 
 
@@ -189,7 +196,9 @@ def test_raising_on_changing_invalid_field(
 ) -> None:
     expected_data["invalid"] = 1
 
-    with pytest.raises(ValueError, match="Unknown field invalid"):
+    with pytest.raises(
+        ValueError, match="Executable header contains invalid fields: invalid"
+    ):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).change(
             expected_data
         )
@@ -203,7 +212,9 @@ def test_raising_on_changing_invalid_e_ident_field(
 ) -> None:
     expected_data["e_ident"]["invalid"] = 1
 
-    with pytest.raises(ValueError, match="Unknown field invalid"):
+    with pytest.raises(
+        ValueError, match="Executable header contains invalid fields: invalid"
+    ):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).change(
             expected_data
         )
@@ -215,16 +226,32 @@ def test_raising_on_changing_invalid_e_ident_field(
 @pytest.mark.parametrize(
     "field, invalid_value, error_message",
     [
-        ("e_type", 5, "Invalid value for e_type"),
-        ("e_shoff", 7, "Invalid value for e_shoff"),
-        ("e_entry", 0, "Invalid value for e_entry"),
-        ("e_ehsize", 32, "Invalid value for e_ehsize"),
-        ("e_phentsize", 64, "Invalid value for e_phentsize"),
-        ("e_shentsize", 128, "Invalid value for e_shentsize"),
-        ("e_flags", 0xDEADBEEF, "Nonzero e_flags unexpected for x86-64"),
+        ("e_type", 5, "Executable header contains invalid fields: e_type"),
+        ("e_shoff", 7, "Executable header contains invalid fields: e_shoff"),
+        ("e_entry", 0, "Executable header contains invalid fields: e_entry"),
+        (
+            "e_ehsize",
+            32,
+            "Executable header contains invalid fields: e_ehsize",
+        ),
+        (
+            "e_phentsize",
+            64,
+            "Executable header contains invalid fields: e_phentsize",
+        ),
+        (
+            "e_shentsize",
+            128,
+            "Executable header contains invalid fields: e_shentsize",
+        ),
+        (
+            "e_flags",
+            0xDEADBEEF,
+            "Executable header contains invalid fields: e_flags",
+        ),
     ],
 )
-def test_raising_on_changing_invalid_field_values(
+def test_raising_on_changing_field_with_invalid_value(
     raw_data: bytearray,
     expected_data: dict[str, Any],
     field: str,
@@ -245,12 +272,20 @@ def test_raising_on_changing_invalid_field_values(
 @pytest.mark.parametrize(
     "field, invalid_value, error_message",
     [
-        ("EI_MAG", b"invalid", "Invalid value for EI_MAG"),
-        ("EI_DATA", 3, "Invalid value for EI_DATA"),
-        ("EI_VERSION", 2, "Invalid value for EI_VERSION"),
+        (
+            "EI_MAG",
+            b"invalid",
+            "Executable header contains invalid fields: EI_MAG",
+        ),
+        ("EI_DATA", 3, "Executable header contains invalid fields: EI_DATA"),
+        (
+            "EI_VERSION",
+            2,
+            "Executable header contains invalid fields: EI_VERSION",
+        ),
     ],
 )
-def test_raising_on_changing_invalid_e_ident_field_values(
+def test_raising_on_changing_e_ident_field_with_invalid_value(
     raw_data: bytearray,
     expected_data: dict[str, Any],
     field: str,
@@ -260,6 +295,30 @@ def test_raising_on_changing_invalid_e_ident_field_values(
     expected_data["e_ident"][field] = invalid_value
 
     with pytest.raises(ValueError, match=error_message):
+        ValidatedExecutableHeader(RawExecutableHeader(raw_data)).change(
+            expected_data
+        )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_changing_multiple_fields_with_invalid_values(
+    raw_data: bytearray,
+    expected_data: dict[str, Any],
+) -> None:
+    expected_data["e_ident"]["EI_MAG"] = b"invalid"
+    expected_data["e_ident"]["EI_VERSION"] = 2
+    expected_data["e_flags"] = 0xDEADBEEF
+    expected_data["e_shentsize"] = 128
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Executable header contains invalid fields: EI_MAG, "
+            "EI_VERSION, e_flags, e_shentsize"
+        ),
+    ):
         ValidatedExecutableHeader(RawExecutableHeader(raw_data)).change(
             expected_data
         )

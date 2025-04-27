@@ -46,7 +46,7 @@ def test_executable_header_command(
         "  Start of program headers: 0x40\n"
         "  Start of section headers: 0x4b20\n"
         "  Flags: 0\n"
-        "  ELF header size: 64 bytes\n"
+        "  Executable header size: 64 bytes\n"
         "  Program header entry size: 56\n"
         "  Number of program headers: 13\n"
         "  Section header entry size: 64\n"
@@ -99,22 +99,19 @@ def test_sections_command_with_full_flag(
     for line in output[1:]:
         assert (
             re.compile(
-                (
-                    r"^\[\d+]\s+"
-                    r"(?:\S+|\s{1,})\s+"
-                    r"\d+\s+"
-                    r"0x[0-9a-fA-F]+\s+"
-                    r"0x[0-9a-fA-F]+\s+"
-                    r"0x[0-9a-fA-F]+\s+"
-                    r"\d+\s+"
-                    r"\d+\s+"
-                    r"\d+\s+"
-                    r"\d+\s+"
-                    r"\d+\s*$"
-                )
-            ).match(line)
-            is not None
-        )
+                r"^\[\d+]\s+"
+                r"(?:\.\S+(?: \(\d+\))?|0|\(\d+\)|\s+)\s+"
+                r"\d+\s+"
+                r"0x[0-9a-fA-F]+\s+"
+                r"0x[0-9a-fA-F]+\s+"
+                r"0x[0-9a-fA-F]+\s+"
+                r"\d+\s+"
+                r"\d+\s+"
+                r"\d+\s+"
+                r"\d+\s+"
+                r"\d+\s*$"
+            )
+        ).match(line) is not None
 
 
 @pytest.mark.parametrize(
@@ -283,10 +280,14 @@ def test_section_command_with_stripped_section_headers_and_full_flag(
 
 
 @pytest.mark.parametrize(
+    "validated",
+    [False, True],
+)
+@pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
 def test_symbol_table_command(
-    raw_data: bytearray, capsys: CaptureFixture[str]
+    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
 ) -> None:
     expected_header = "Symbol Table: .dynsym"
     expected_columns = (
@@ -301,7 +302,8 @@ def test_symbol_table_command(
             raw_data,
             RawSectionHeaders(raw_data, executable_header),
             executable_header,
-        )
+        ),
+        validated,
     )
 
     assert command.name() == "dynsym"
@@ -470,7 +472,7 @@ def test_fini_command(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_raising_on_invalid_argument(raw_data: bytearray) -> None:
-    with pytest.raises(ValueError, match="Invalid arguments: "):
+    with pytest.raises(ValueError, match="Unrecognized arguments: --invalid"):
         executable_header = RawExecutableHeader(raw_data)
 
         SectionCommand(

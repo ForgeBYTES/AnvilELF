@@ -1,3 +1,4 @@
+import re
 from typing import Callable
 
 import pytest
@@ -357,10 +358,14 @@ def test_raising_on_changing_fields_with_missing_field(
 @pytest.mark.parametrize(
     "field, invalid_value, error",
     [
-        ("st_info", 254, "Invalid value for st_info"),
+        ("st_info", 254, "Symbol (Scrt1.o) contains invalid fields: st_info"),
         ("st_other", 256, "Unable to process data"),
-        ("st_shndx", 999999, "Invalid value for st_shndx"),
-        ("unknown", 123, "Unknown field unknown"),
+        (
+            "st_shndx",
+            999999,
+            "Symbol (Scrt1.o) contains invalid fields: st_shndx",
+        ),
+        ("unknown", 123, "Symbol (Scrt1.o) contains invalid fields: unknown"),
     ],
 )
 @pytest.mark.parametrize(
@@ -384,7 +389,40 @@ def test_raising_on_changing_symbol_with_invalid_value(
     fields = symbol.fields()
     fields[field] = invalid_value
 
-    with pytest.raises(ValueError, match=error):
+    with pytest.raises(ValueError, match=re.escape(error)):
+        ValidatedSymbol(symbol).change(fields)
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_changing_multiple_symbol_fields_with_invalid_values(
+    raw_data: bytearray,
+) -> None:
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    symbol = RawSymbolTable(
+        sections.find(".symtab"),
+        RawStringTable(sections.find(".strtab")),
+    ).symbols()[1]
+
+    fields = symbol.fields()
+    fields["st_info"] = 254
+    fields["st_shndx"] = 999999
+    fields["unknown"] = 123
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Symbol (Scrt1.o) contains invalid fields: "
+            "st_info, st_shndx, unknown"
+        ),
+    ):
         ValidatedSymbol(symbol).change(fields)
 
 

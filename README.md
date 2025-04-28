@@ -18,7 +18,7 @@ It is built with **SOLID principles**, **full test coverage**, and a strong focu
 | ✅ Section Headers                   | 🔄 Patching & Code Injection |
 | ✅ Sections                          | 🔄 Infection Detection       |
 | ✅ String & Symbol Tables            | 🔄 Obfuscation               |
-| 🔄 Program Headers                  |                              |
+| ✅ Program Headers                   |                              |
 | 🔄 Segments                         |                              |
 | 🔄 Relocations & Linking            |                              |
 | 🧠 Obfuscated / Headerless Binaries |                              |

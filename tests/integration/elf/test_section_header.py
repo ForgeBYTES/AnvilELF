@@ -127,7 +127,7 @@ def test_changing_fields(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_changing_fields_with_missing_key_in_expected_data(
+def test_raising_on_changing_fields_with_missing_field(
     raw_data: bytearray, expected_offset: int, expected_data: dict[str, int]
 ) -> None:
     offset = RawExecutableHeader(raw_data).fields()["e_shoff"]
@@ -169,11 +169,29 @@ def test_raising_on_changing_field_with_unprocessable_data_type(
 
 
 @pytest.mark.parametrize(
+    "_class",
+    [
+        lambda raw_data: RawSectionHeaders(
+            raw_data,
+            RawExecutableHeader(raw_data),
+        ),
+        lambda raw_data: ValidatedSectionHeaders(
+            RawSectionHeaders(
+                raw_data,
+                RawExecutableHeader(raw_data),
+            )
+        ),
+    ],
+)
+@pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_returning_all_section_headers(raw_data: bytearray) -> None:
+def test_returning_all_section_headers(
+    raw_data: bytearray,
+    _class: Callable[[bytearray], RawSectionHeaders | ValidatedSectionHeaders],
+) -> None:
     executable_header = RawExecutableHeader(raw_data)
-    section_headers = RawSectionHeaders(raw_data, executable_header).all()
+    section_headers = _class(raw_data).all()
 
     assert len(section_headers) == executable_header.fields()["e_shnum"]
     assert all(
@@ -366,7 +384,7 @@ def test_changing_sh_addr_alignment(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_changing_invalid_field_values(
+def test_raising_on_changing_multiple_invalid_field_values(
     raw_data: bytearray,
     expected_offset: int,
     expected_data: dict[str, int],
@@ -391,40 +409,3 @@ def test_raising_on_changing_invalid_field_values(
             ),
             RawSectionHeaders(raw_data, RawExecutableHeader(raw_data)),
         ).change(expected_data)
-
-
-@pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/binary"], indirect=True
-)
-def test_returning_all_validated_section_headers_and_their_fields(
-    raw_data: bytearray,
-) -> None:
-    expected_fields = [
-        "sh_name",
-        "sh_type",
-        "sh_flags",
-        "sh_addr",
-        "sh_offset",
-        "sh_size",
-        "sh_link",
-        "sh_info",
-        "sh_addralign",
-        "sh_entsize",
-    ]
-
-    executable_header = RawExecutableHeader(raw_data)
-    section_headers = ValidatedSectionHeaders(
-        RawSectionHeaders(raw_data, executable_header),
-    ).all()
-
-    for section_header in section_headers:
-        print(section_header)
-
-        assert len(section_headers) == executable_header.fields()["e_shnum"]
-    assert all(
-        isinstance(section_header, ValidatedSectionHeader)
-        for section_header in section_headers
-    )
-
-    for section_header in section_headers:
-        assert list(section_header.fields().keys()) == expected_fields

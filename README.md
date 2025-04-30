@@ -2,6 +2,7 @@
 
 ![CI](https://github.com/Dasuos/AnvilELF/actions/workflows/ci.yml/badge.svg)
 [![codecov](https://codecov.io/gh/dasuos/AnvilELF/graph/badge.svg?token=VGJ51NS4HK)](https://codecov.io/gh/dasuos/AnvilELF)
+![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)
 
 **From raw bytes to forged ELF—crafted with purist OOP.**
 
@@ -89,3 +90,11 @@ To remove the container and Docker image:
 ```sh
 make clean
 ```
+
+---
+
+## 📝 License
+
+This project is licensed under the [MIT License](./LICENSE).  
+You are free to use, modify, and distribute it. Just don't blame the blacksmith if the anvil breaks your enemies' code. 🛠️🔥
+

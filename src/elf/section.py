@@ -165,7 +165,7 @@ class RawSection(Section):
     def replace(self, data: bytes) -> None:
         fields = self.__section_header.fields()
         if not (
-            self.__is_in_range(fields) and self.__is_correct_size(data, fields)
+            self.__is_in_range(fields) and self.__is_valid_size(data, fields)
         ):
             raise ValueError("Invalid section size")
         self.__raw_data[
@@ -183,7 +183,7 @@ class RawSection(Section):
     def __is_in_range(self, fields: dict[str, int]) -> bool:
         return fields["sh_offset"] + fields["sh_size"] <= len(self.__raw_data)
 
-    def __is_correct_size(self, data: bytes, fields: dict[str, int]) -> bool:
+    def __is_valid_size(self, data: bytes, fields: dict[str, int]) -> bool:
         return len(data) == fields["sh_size"]
 
 

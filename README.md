@@ -20,7 +20,7 @@ It is built with **SOLID principles**, **full test coverage**, and a strong focu
 | ✅ Sections                          | 🔄 Infection Detection       |
 | ✅ String & Symbol Tables            | 🔄 Obfuscation               |
 | ✅ Program Headers                   |                              |
-| 🔄 Segments                         |                              |
+| ✅ Segments                          |                              |
 | 🔄 Relocations & Linking            |                              |
 | 🧠 Obfuscated / Headerless Binaries |                              |
 

@@ -9,6 +9,7 @@ from src.control.command import (
     PltCommand,
     SectionCommand,
     SectionsCommand,
+    SegmentsCommand,
     SymtabCommand,
     TextCommand,
 )
@@ -30,9 +31,13 @@ class Application:
         try:
             print(self.__intro)
             arguments = self.__arguments(self.__argv)
-            executable_header, section_headers, sections = self.__binary(
-                arguments
-            ).components()
+            (
+                executable_header,
+                section_headers,
+                sections,
+                program_headers,
+                segments,
+            ) = self.__binary(arguments).components()
             return HistoricalCommandLine(
                 InteractiveCommandLine(
                     self.__hint,
@@ -46,6 +51,7 @@ class Application:
                         FiniCommand(sections),
                         SymtabCommand(sections, arguments.validate),
                         DynsymCommand(sections, arguments.validate),
+                        SegmentsCommand(segments),
                     ],
                 )
             )

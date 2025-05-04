@@ -41,6 +41,10 @@ anvil> header
 anvil> sections
 anvil> sections --full
 
+# List all segments
+anvil> segments
+anvil> segments --full
+
 # Show a specific section by name
 anvil> section --name .shstrtab
 anvil> section --name .shstrtab --full

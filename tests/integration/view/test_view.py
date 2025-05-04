@@ -5,6 +5,7 @@ from _pytest.capture import CaptureFixture
 from _pytest.fixtures import FixtureRequest
 
 from src.elf.executable_header import RawExecutableHeader
+from src.elf.program_header import RawProgramHeaders
 from src.elf.section import (
     RawDisassembly,
     RawSection,
@@ -13,11 +14,13 @@ from src.elf.section import (
     RawSymbolTable,
 )
 from src.elf.section_header import RawSectionHeaders
+from src.elf.segment import RawSegments
 from src.view.view import (
     PrintableDisassembly,
     PrintableExecutableHeader,
     PrintableSection,
     PrintableSections,
+    PrintableSegments,
     PrintableSymbolTable,
 )
 
@@ -298,3 +301,76 @@ def test_printing_disassembly(
     ).print()
 
     assert capsys.readouterr().out.startswith(expected_output)
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+)
+def test_printing_segments(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    executable_header = RawExecutableHeader(raw_data)
+    segments = RawSegments(
+        raw_data,
+        RawProgramHeaders(raw_data, executable_header),
+    )
+
+    PrintableSegments(segments).print()
+
+    output = capsys.readouterr().out.strip().splitlines()
+
+    assert re.match(
+        r"\s*Idx\s+Type\s+Flags\s+Offset\s+FileSize",
+        output[0],
+    )
+
+    for line in output[1:]:
+        assert (
+            re.compile(
+                r"^\[\d+]\s+"
+                r"\S+\s+"
+                r"R?W?E?\s+"
+                r"0x[0-9a-fA-F]{6}\s+"
+                r"\d+\s*$"
+            ).match(line)
+            is not None
+        )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_printing_full_segments(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    executable_header = RawExecutableHeader(raw_data)
+    segments = RawSegments(
+        raw_data,
+        RawProgramHeaders(raw_data, executable_header),
+    )
+
+    PrintableSegments(segments, full=True).print()
+
+    output = capsys.readouterr().out.strip().splitlines()
+
+    assert re.match(
+        r"\s*Idx\s+Type\s+Flags\s+Offset\s+VirtAddr\s+PhysAddr\s+"
+        r"FileSize\s+MemSize\s+Align",
+        output[0],
+    )
+
+    for line in output[1:]:
+        assert (
+            re.compile(
+                r"^\[\d+]\s+"
+                r"\S+\s+"
+                r"R?W?E?\s+"
+                r"0x[0-9a-fA-F]{6}\s+"
+                r"0x[0-9a-fA-F]{8}\s+"
+                r"0x[0-9a-fA-F]{8}\s+"
+                r"\d+\s+"
+                r"\d+\s+"
+                r"\d+\s*$"
+            ).match(line)
+            is not None
+        )

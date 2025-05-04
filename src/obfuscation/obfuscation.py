@@ -1,9 +1,9 @@
-from typing import Tuple
-
 from src.elf.binary import Binary
 from src.elf.executable_header import ExecutableHeader, RawExecutableHeader
+from src.elf.program_header import ProgramHeaders
 from src.elf.section import Sections
 from src.elf.section_header import RawSectionHeaders, SectionHeaders
+from src.elf.segment import Segments
 
 
 class HeaderlessBinary(Binary):
@@ -11,7 +11,11 @@ class HeaderlessBinary(Binary):
         self.__origin = origin
         self.__stripped = False
 
-    def components(self) -> Tuple[ExecutableHeader, SectionHeaders, Sections]:
+    def components(
+        self,
+    ) -> tuple[
+        ExecutableHeader, SectionHeaders, Sections, ProgramHeaders, Segments
+    ]:
         self.__ensure_stripped()
         return self.__origin.components()
 

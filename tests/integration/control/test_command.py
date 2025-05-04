@@ -12,11 +12,14 @@ from src.control.command import (
     PltCommand,
     SectionCommand,
     SectionsCommand,
+    SegmentsCommand,
     TextCommand,
 )
 from src.elf.executable_header import RawExecutableHeader
+from src.elf.program_header import RawProgramHeaders
 from src.elf.section import RawSections
 from src.elf.section_header import RawSectionHeaders
+from src.elf.segment import RawSegments
 
 
 @pytest.fixture
@@ -502,3 +505,52 @@ def test_section_command_raising_on_nonexistent_section(
         )
 
         command.execute(["--name", ".nonexistent"])
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    [
+        "tests/samples/binaries/binary",
+        "tests/samples/binaries/binary-2",
+    ],
+    indirect=True,
+)
+def test_segments_command_with_full_flag(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    executable_header = RawExecutableHeader(raw_data)
+
+    command = SegmentsCommand(
+        RawSegments(
+            raw_data,
+            RawProgramHeaders(raw_data, executable_header),
+        )
+    )
+
+    assert command.name() == "segments"
+
+    command.execute(["--full"])
+
+    output = capsys.readouterr().out.strip().splitlines()
+
+    assert re.match(
+        r"\s*Idx\s+Type\s+Flags\s+Offset\s+VirtAddr\s+PhysAddr\s+"
+        r"FileSize\s+MemSize\s+Align",
+        output[0],
+    )
+
+    for line in output[1:]:
+        assert (
+            re.compile(
+                r"^\[\d+]\s+"
+                r"\S+\s+"
+                r"R?W?E?\s+"
+                r"0x[0-9a-fA-F]{6}\s+"
+                r"0x[0-9a-fA-F]{8}\s+"
+                r"0x[0-9a-fA-F]{8}\s+"
+                r"\d+\s+"
+                r"\d+\s+"
+                r"\d+\s*$"
+            ).match(line)
+            is not None
+        )

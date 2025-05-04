@@ -5,17 +5,27 @@ from src.elf.executable_header import (
     RawExecutableHeader,
     ValidatedExecutableHeader,
 )
+from src.elf.program_header import (
+    ProgramHeaders,
+    RawProgramHeaders,
+    ValidatedProgramHeaders,
+)
 from src.elf.section import RawSections, Sections
 from src.elf.section_header import (
     RawSectionHeaders,
     SectionHeaders,
     ValidatedSectionHeaders,
 )
+from src.elf.segment import RawSegments, Segments
 
 
 class Binary(ABC):
     @abstractmethod
-    def components(self) -> tuple[ExecutableHeader, SectionHeaders, Sections]:
+    def components(
+        self,
+    ) -> tuple[
+        ExecutableHeader, SectionHeaders, Sections, ProgramHeaders, Segments
+    ]:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -32,10 +42,15 @@ class RawBinary(Binary):
         self.__path = path
         self.__raw_data: bytearray | None = None
 
-    def components(self) -> tuple[ExecutableHeader, SectionHeaders, Sections]:
+    def components(
+        self,
+    ) -> tuple[
+        ExecutableHeader, SectionHeaders, Sections, ProgramHeaders, Segments
+    ]:
         raw_data = self.raw_data()
         executable_header = RawExecutableHeader(raw_data)
         section_headers = RawSectionHeaders(raw_data, executable_header)
+        program_headers = RawProgramHeaders(raw_data, executable_header)
         return (
             executable_header,
             section_headers,
@@ -44,6 +59,8 @@ class RawBinary(Binary):
                 section_headers,
                 executable_header,
             ),
+            program_headers,
+            RawSegments(raw_data, program_headers),
         )
 
     def raw_data(self) -> bytearray:
@@ -67,13 +84,20 @@ class ValidatedBinary(Binary):
     def __init__(self, origin: Binary):
         self.__origin = origin
 
-    def components(self) -> tuple[ExecutableHeader, SectionHeaders, Sections]:
+    def components(
+        self,
+    ) -> tuple[
+        ExecutableHeader, SectionHeaders, Sections, ProgramHeaders, Segments
+    ]:
         raw_data = self.raw_data()
         executable_header = ValidatedExecutableHeader(
             RawExecutableHeader(raw_data)
         )
         section_headers = ValidatedSectionHeaders(
             RawSectionHeaders(raw_data, executable_header)
+        )
+        program_headers = ValidatedProgramHeaders(
+            RawProgramHeaders(raw_data, executable_header)
         )
         return (
             executable_header,
@@ -83,6 +107,8 @@ class ValidatedBinary(Binary):
                 section_headers,
                 executable_header,
             ),
+            program_headers,
+            RawSegments(raw_data, program_headers),
         )
 
     def raw_data(self) -> bytearray:

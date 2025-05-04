@@ -11,11 +11,13 @@ from src.elf.section import (
     SymbolTable,
     ValidatedSymbolTable,
 )
+from src.elf.segment import Segments
 from src.view.view import (
     PrintableDisassembly,
     PrintableExecutableHeader,
     PrintableSection,
     PrintableSections,
+    PrintableSegments,
     PrintableSymbolTable,
 )
 
@@ -193,3 +195,22 @@ class InitCommand(DisassemblyCommand):
 class FiniCommand(DisassemblyCommand):
     def __init__(self, sections: Sections):
         super().__init__(sections, "fini", ".fini")
+
+
+class SegmentsCommand(Command):
+    __NAME = "segments"
+
+    def __init__(self, segments: Segments):
+        self.__segments = segments
+
+    def name(self) -> str:
+        return self.__NAME
+
+    def execute(self, raw_arguments: list[str]) -> None:
+        arguments = self.__arguments(self.__NAME, raw_arguments)
+        PrintableSegments(self.__segments, full=arguments.full).print()
+
+    def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
+        parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument("-f", "--full", action="store_true")
+        return parser.parse_args(raw_arguments)

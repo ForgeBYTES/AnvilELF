@@ -7,8 +7,10 @@ import pytest
 
 from src.elf.binary import RawBinary, ValidatedBinary
 from src.elf.executable_header import ExecutableHeader
+from src.elf.program_header import ProgramHeaders
 from src.elf.section import Sections
 from src.elf.section_header import SectionHeaders
+from src.elf.segment import Segments
 
 
 @pytest.fixture
@@ -50,11 +52,15 @@ def test_replacing_shstrtab_and_saving_binary(
     )
     original_binary = binary(path)
 
-    executable_header, section_header, sections = original_binary.components()
+    executable_header, section_header, sections, program_headers, segments = (
+        original_binary.components()
+    )
 
     assert isinstance(executable_header, ExecutableHeader)
     assert isinstance(section_header, SectionHeaders)
     assert isinstance(sections, Sections)
+    assert isinstance(program_headers, ProgramHeaders)
+    assert isinstance(segments, Segments)
 
     original_data = original_binary.raw_data()[:]
 
@@ -67,7 +73,7 @@ def test_replacing_shstrtab_and_saving_binary(
     assert original_data != original_binary.raw_data()
 
     duplicate_binary = RawBinary(path)
-    _, _, sections = duplicate_binary.components()
+    _, _, sections, _, _ = duplicate_binary.components()
 
     assert sections.find(".code").raw_data().tobytes() == text_data
 

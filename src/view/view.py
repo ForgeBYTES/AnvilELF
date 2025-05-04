@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 
 from src.elf.executable_header import ExecutableHeader
+from src.elf.program_header import ProgramHeader
 from src.elf.section import Disassembly, Section, Sections, Symbol, SymbolTable
+from src.elf.segment import Segments
 
 
 class Printable(ABC):
@@ -209,3 +211,76 @@ class PrintableDisassembly(Printable):
             if size
             else instructions[offset:]
         )
+
+
+class PrintableSegments(Printable):
+    def __init__(self, segments: Segments, full: bool = False):
+        self.__segments = segments
+        self.__full = full
+
+    def print(self) -> None:
+        if self.__full:
+            self.__print_full(self.__segments)
+        else:
+            self.__print_simple(self.__segments)
+
+    def __print_simple(self, segments: Segments) -> None:
+        print(
+            f"{'Idx':<4} {'Type':<15} {'Flags':<10} {'Offset':<10} "
+            f"{'FileSize'}"
+        )
+        for index, segment in enumerate(segments.all()):
+            header = segment.header()
+            print(
+                f"{f'[{index}]':<4} "
+                f"{self.__type(header['p_type']):<15} "
+                f"{self.__flags(header['p_flags']):<10} "
+                f"0x{header['p_offset']:06x}   "
+                f"{header['p_filesz']:<10}"
+            )
+
+    def __print_full(self, segments: Segments) -> None:
+        print(
+            f"{'Idx':<4} {'Type':<15} {'Flags':<10} {'Offset':<10} "
+            f"{'VirtAddr':<12} {'PhysAddr':<12} {'FileSize':<10} "
+            f"{'MemSize':<10} {'Align':<6}"
+        )
+        for index, segment in enumerate(segments.all()):
+            header = segment.header()
+            print(
+                f"{f'[{index}]':<4} "
+                f"{self.__type(header['p_type']):<15} "
+                f"{self.__flags(header['p_flags']):<10} "
+                f"0x{header['p_offset']:06x}   "
+                f"0x{header['p_vaddr']:08x}   "
+                f"0x{header['p_paddr']:08x}   "
+                f"{header['p_filesz']:<10} "
+                f"{header['p_memsz']:<10} "
+                f"{header['p_align']:<6}"
+            )
+
+    def __type(self, p_type: int) -> str:
+        types = {
+            ProgramHeader.PT_NULL: "NULL",
+            ProgramHeader.PT_LOAD: "LOAD",
+            ProgramHeader.PT_DYNAMIC: "DYNAMIC",
+            ProgramHeader.PT_INTERP: "INTERP",
+            ProgramHeader.PT_NOTE: "NOTE",
+            ProgramHeader.PT_SHLIB: "SHLIB",
+            ProgramHeader.PT_PHDR: "PHDR",
+            ProgramHeader.PT_TLS: "TLS",
+            ProgramHeader.GNU_EH_FRAME: "GNU_EH_FRAME",
+            ProgramHeader.GNU_STACK: "GNU_STACK",
+            ProgramHeader.GNU_RELRO: "GNU_RELRO",
+            ProgramHeader.GNU_PROPERTY: "GNU_PROPERTY",
+        }
+
+        return types[p_type] if p_type in types else str(p_type)
+
+    def __flags(self, p_flags: int) -> str:
+        flags = [
+            "R" if p_flags & ProgramHeader.PF_R else "",
+            "W" if p_flags & ProgramHeader.PF_W else "",
+            "E" if p_flags & ProgramHeader.PF_X else "",
+        ]
+        return "".join(flags)

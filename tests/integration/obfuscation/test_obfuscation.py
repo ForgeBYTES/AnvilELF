@@ -102,7 +102,7 @@ def test_returning_components_by_headerless_binary(
     path = "tests/samples/temporary_binaries/binary"
 
     headerless_binary = HeaderlessBinary(RawBinary(path))
-    executable_header, section_headers, sections = (
+    executable_header, section_headers, sections, program_headers, segments = (
         headerless_binary.components()
     )
 

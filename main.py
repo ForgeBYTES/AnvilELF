@@ -18,6 +18,7 @@ hint = """
 header                        Show executable header
 sections [--full]             List all sections
 section -n NAME [-full]       Show section by name
+segments [--full]             List all segments
 text [--offset N] [--size N]  Disassemble .text section
 plt                           Disassemble .plt section
 init                          Disassemble .init section

@@ -32,6 +32,11 @@ class ProgramHeader(ABC):
     PT_LOPROC = 0x70000000
     PT_HIPROC = 0x7FFFFFFF
 
+    GNU_EH_FRAME = 0x6474E550
+    GNU_STACK = 0x6474E551
+    GNU_RELRO = 0x6474E552
+    GNU_PROPERTY = 0x6474E553
+
     PF_X = 0x1
     PF_W = 0x2
     PF_R = 0x4

@@ -1,6 +1,10 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ForgeBYTES/AnvilELF/main/media/logo.png" alt="AnvilELF Banner" width="600"/>
+</p>
+
 # AnvilELF ⚒️🔥
 
-![CI](https://github.com/Dasuos/AnvilELF/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/ForgeBYTES/AnvilELF/actions/workflows/ci.yml/badge.svg)
 [![codecov](https://codecov.io/gh/dasuos/AnvilELF/graph/badge.svg?token=VGJ51NS4HK)](https://codecov.io/gh/dasuos/AnvilELF)
 ![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)
 

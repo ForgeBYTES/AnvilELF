@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ForgeBYTES/AnvilELF/main/media/logo.png" alt="AnvilELF Banner" width="400"/>
+  <img src="https://raw.githubusercontent.com/ForgeBYTES/AnvilELF/main/media/logo.png" alt="AnvilELF Banner" width="500"/>
 </p>
 
 # AnvilELF ⚒️🔥

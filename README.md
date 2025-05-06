@@ -5,7 +5,7 @@
 # AnvilELF ⚒️🔥
 
 ![CI](https://github.com/ForgeBYTES/AnvilELF/actions/workflows/ci.yml/badge.svg)
-[![codecov](https://codecov.io/gh/dasuos/AnvilELF/graph/badge.svg?token=VGJ51NS4HK)](https://codecov.io/gh/dasuos/AnvilELF)
+[![codecov](https://codecov.io/gh/ForgeBYTES/AnvilELF/graph/badge.svg?token=YWAJ3AXIBK)](https://codecov.io/gh/ForgeBYTES/AnvilELF)
 ![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)
 
 **From raw bytes to forged ELF—crafted with purist OOP.**

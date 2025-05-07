@@ -8,7 +8,7 @@
 [![codecov](https://codecov.io/gh/ForgeBYTES/AnvilELF/graph/badge.svg?token=YWAJ3AXIBK)](https://codecov.io/gh/ForgeBYTES/AnvilELF)
 ![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)
 
-**From raw bytes to forged ELF—crafted with purist OOP.**
+**From raw bytes to forged ELF — crafted with purist OOP.**
 
 AnvilELF is a purist object-oriented tool for ELF binary parsing, inspection, and modification.  
 It is built with **SOLID principles**, **full test coverage**, and a strong focus on **maintainability**.

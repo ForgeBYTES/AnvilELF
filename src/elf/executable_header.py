@@ -5,7 +5,6 @@ from typing import Any
 
 class ExecutableHeader(ABC):
     _HEADER_SIZE = 64
-
     _E_INDENT_FIELDS = [
         "EI_MAG",
         "EI_CLASS",

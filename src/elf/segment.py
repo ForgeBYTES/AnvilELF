@@ -1,3 +1,4 @@
+import struct
 from abc import ABC, abstractmethod
 
 from src.elf.program_header import ProgramHeader, ProgramHeaders
@@ -24,6 +25,75 @@ class Segment(ABC):
 class Segments(ABC):
     @abstractmethod
     def all(self) -> list[Segment]:
+        pass  # pragma: no cover
+
+
+class DynamicEntry(ABC):
+    ENTRY_SIZE = 16
+    FIELDS = ["d_tag", "d_un"]
+
+    DT_NULL = 0
+    DT_NEEDED = 1
+    DT_PLTRELSZ = 2
+    DT_PLTGOT = 3
+    DT_HASH = 4
+    DT_STRTAB = 5
+    DT_SYMTAB = 6
+    DT_RELA = 7
+    DT_RELASZ = 8
+    DT_RELAENT = 9
+    DT_STRSZ = 10
+    DT_SYMENT = 11
+    DT_INIT = 12
+    DT_FINI = 13
+    DT_SONAME = 14
+    DT_RPATH = 15
+    DT_SYMBOLIC = 16
+    DT_REL = 17
+    DT_RELSZ = 18
+    DT_RELENT = 19
+    DT_PLTREL = 20
+    DT_DEBUG = 21
+    DT_TEXTREL = 22
+    DT_JMPREL = 23
+    DT_BIND_NOW = 24
+    DT_INIT_ARRAY = 25
+    DT_FINI_ARRAY = 26
+    DT_INIT_ARRAYSZ = 27
+    DT_FINI_ARRAYSZ = 28
+    DT_RUNPATH = 29
+    DT_FLAGS = 30
+    DT_PREINIT_ARRAY = 32
+    DT_PREINIT_ARRAYSZ = 33
+    DT_MAXPOSTAGS = 34
+
+    # fmt: off
+    TAGS = [
+        DT_NULL, DT_NEEDED, DT_PLTRELSZ, DT_PLTGOT, DT_HASH, DT_STRTAB,
+        DT_SYMTAB, DT_RELA, DT_RELASZ, DT_RELAENT, DT_STRSZ, DT_SYMENT,
+        DT_INIT, DT_FINI, DT_SONAME, DT_RPATH, DT_SYMBOLIC, DT_REL,
+        DT_RELSZ, DT_RELENT, DT_PLTREL, DT_DEBUG, DT_TEXTREL, DT_JMPREL,
+        DT_BIND_NOW, DT_INIT_ARRAY, DT_FINI_ARRAY, DT_INIT_ARRAYSZ,
+        DT_FINI_ARRAYSZ, DT_RUNPATH, DT_FLAGS, DT_PREINIT_ARRAY,
+        DT_PREINIT_ARRAYSZ, DT_MAXPOSTAGS,
+    ]
+    # fmt: on
+
+    DT_LOOS = 0x6000000D
+    DT_HIPROC = 0x7FFFFFFF
+
+    @abstractmethod
+    def fields(self) -> dict[str, int]:
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def change(self, fields: dict[str, int]) -> None:
+        pass  # pragma: no cover
+
+
+class Dynamic(ABC):
+    @abstractmethod
+    def all(self) -> list[DynamicEntry]:
         pass  # pragma: no cover
 
 
@@ -75,3 +145,91 @@ class RawSegments(Segments):
             RawSegment(self.__raw_data, program_header)
             for program_header in self.__program_headers.all()
         ]
+
+
+class RawDynamicEntry(DynamicEntry):
+    __STRUCT_FORMAT = "<qQ"
+
+    def __init__(self, raw_data: memoryview, offset: int):
+        self.__raw_data = raw_data
+        self.__offset = offset
+
+    def fields(self) -> dict[str, int]:
+        try:
+            return dict(
+                zip(
+                    self.FIELDS,
+                    struct.unpack_from(
+                        self.__STRUCT_FORMAT, self.__raw_data, self.__offset
+                    ),
+                )
+            )
+        except struct.error:
+            raise ValueError("Unable to process data")
+
+    def change(self, fields: dict[str, int]) -> None:
+        try:
+            self.__raw_data[
+                self.__offset : self.__offset + self.ENTRY_SIZE  # noqa: E203
+            ] = struct.pack(
+                self.__STRUCT_FORMAT, *(fields[field] for field in self.FIELDS)
+            )
+        except (KeyError, struct.error):
+            raise ValueError("Unable to process data")
+
+
+class RawDynamic(Dynamic):
+    def __init__(self, segment: Segment):
+        self.__segment = segment
+
+    def all(self) -> list[DynamicEntry]:
+        raw_data = self.__segment.raw_data()
+        return [
+            RawDynamicEntry(raw_data, offset)
+            for offset in range(0, len(raw_data), RawDynamicEntry.ENTRY_SIZE)
+        ]
+
+
+class ValidatedDynamicEntry(DynamicEntry):
+    def __init__(self, origin: DynamicEntry):
+        self.__origin = origin
+
+    def fields(self) -> dict[str, int]:
+        fields = self.__origin.fields()
+        self.__validate(fields)
+        return fields
+
+    def change(self, fields: dict[str, int]) -> None:
+        self.__validate(fields)
+        return self.__origin.change(fields)
+
+    def __validate(self, fields: dict[str, int]) -> None:
+        invalid_fields: list[str] = []
+        for field, value in fields.items():
+            match field:
+                case "d_tag":
+                    if not (
+                        value in DynamicEntry.TAGS
+                        or (
+                            DynamicEntry.DT_LOOS
+                            <= value
+                            <= DynamicEntry.DT_HIPROC
+                        )
+                    ):
+                        invalid_fields.append(field)
+                case _:
+                    if field not in DynamicEntry.FIELDS:
+                        invalid_fields.append(field)
+        if invalid_fields:
+            raise ValueError(
+                f"Dynamic entry contains invalid fields: "
+                f"{', '.join(invalid_fields)}"
+            )
+
+
+class ValidatedDynamic(Dynamic):
+    def __init__(self, origin: Dynamic):
+        self.__origin = origin
+
+    def all(self) -> list[DynamicEntry]:
+        return [ValidatedDynamicEntry(entry) for entry in self.__origin.all()]

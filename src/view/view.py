@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from src.elf.executable_header import ExecutableHeader
 from src.elf.program_header import ProgramHeader
 from src.elf.section import Disassembly, Section, Sections, Symbol, SymbolTable
-from src.elf.segment import Segments
+from src.elf.segment import Dynamic, DynamicEntry, Segments
 
 
 class Printable(ABC):
@@ -260,7 +260,7 @@ class PrintableSegments(Printable):
             )
 
     def __type(self, p_type: int) -> str:
-        types = {
+        return {
             ProgramHeader.PT_NULL: "NULL",
             ProgramHeader.PT_LOAD: "LOAD",
             ProgramHeader.PT_DYNAMIC: "DYNAMIC",
@@ -273,14 +273,66 @@ class PrintableSegments(Printable):
             ProgramHeader.GNU_STACK: "GNU_STACK",
             ProgramHeader.GNU_RELRO: "GNU_RELRO",
             ProgramHeader.GNU_PROPERTY: "GNU_PROPERTY",
-        }
-
-        return types[p_type] if p_type in types else str(p_type)
+        }.get(p_type, f"{p_type}")
 
     def __flags(self, p_flags: int) -> str:
-        flags = [
-            "R" if p_flags & ProgramHeader.PF_R else "",
-            "W" if p_flags & ProgramHeader.PF_W else "",
-            "E" if p_flags & ProgramHeader.PF_X else "",
-        ]
-        return "".join(flags)
+        return "".join(
+            [
+                "R" if p_flags & ProgramHeader.PF_R else "",
+                "W" if p_flags & ProgramHeader.PF_W else "",
+                "E" if p_flags & ProgramHeader.PF_X else "",
+            ]
+        )
+
+
+class PrintableDynamic(Printable):
+    def __init__(self, dynamic: Dynamic):
+        self.__dynamic = dynamic
+
+    def print(self) -> None:
+        print(f"{'Idx':<4} {'Tag':<20} {'Value'}")
+        for index, entry in enumerate(self.__dynamic.all()):
+            fields = entry.fields()
+            print(
+                f"{f'[{index}]':<4} "
+                f"{self.__tag(fields['d_tag']):<20} "
+                f"{fields['d_un']}"
+            )
+
+    def __tag(self, tag: int) -> str:
+        return {
+            DynamicEntry.DT_NULL: "DT_NULL",
+            DynamicEntry.DT_NEEDED: "DT_NEEDED",
+            DynamicEntry.DT_PLTRELSZ: "DT_PLTRELSZ",
+            DynamicEntry.DT_PLTGOT: "DT_PLTGOT",
+            DynamicEntry.DT_HASH: "DT_HASH",
+            DynamicEntry.DT_STRTAB: "DT_STRTAB",
+            DynamicEntry.DT_SYMTAB: "DT_SYMTAB",
+            DynamicEntry.DT_RELA: "DT_RELA",
+            DynamicEntry.DT_RELASZ: "DT_RELASZ",
+            DynamicEntry.DT_RELAENT: "DT_RELAENT",
+            DynamicEntry.DT_STRSZ: "DT_STRSZ",
+            DynamicEntry.DT_SYMENT: "DT_SYMENT",
+            DynamicEntry.DT_INIT: "DT_INIT",
+            DynamicEntry.DT_FINI: "DT_FINI",
+            DynamicEntry.DT_SONAME: "DT_SONAME",
+            DynamicEntry.DT_RPATH: "DT_RPATH",
+            DynamicEntry.DT_SYMBOLIC: "DT_SYMBOLIC",
+            DynamicEntry.DT_REL: "DT_REL",
+            DynamicEntry.DT_RELSZ: "DT_RELSZ",
+            DynamicEntry.DT_RELENT: "DT_RELENT",
+            DynamicEntry.DT_PLTREL: "DT_PLTREL",
+            DynamicEntry.DT_DEBUG: "DT_DEBUG",
+            DynamicEntry.DT_TEXTREL: "DT_TEXTREL",
+            DynamicEntry.DT_JMPREL: "DT_JMPREL",
+            DynamicEntry.DT_BIND_NOW: "DT_BIND_NOW",
+            DynamicEntry.DT_INIT_ARRAY: "DT_INIT_ARRAY",
+            DynamicEntry.DT_FINI_ARRAY: "DT_FINI_ARRAY",
+            DynamicEntry.DT_INIT_ARRAYSZ: "DT_INIT_ARRAYSZ",
+            DynamicEntry.DT_FINI_ARRAYSZ: "DT_FINI_ARRAYSZ",
+            DynamicEntry.DT_RUNPATH: "DT_RUNPATH",
+            DynamicEntry.DT_FLAGS: "DT_FLAGS",
+            DynamicEntry.DT_PREINIT_ARRAY: "DT_PREINIT_ARRAY",
+            DynamicEntry.DT_PREINIT_ARRAYSZ: "DT_PREINIT_ARRAYSZ",
+            DynamicEntry.DT_MAXPOSTAGS: "DT_MAXPOSTAGS",
+        }.get(tag, f"0x{tag:08x}")

@@ -5,6 +5,7 @@ from _pytest.capture import CaptureFixture
 from _pytest.fixtures import FixtureRequest
 
 from src.control.command import (
+    DynamicCommand,
     DynsymCommand,
     ExecutableHeaderCommand,
     FiniCommand,
@@ -518,12 +519,10 @@ def test_section_command_raising_on_nonexistent_section(
 def test_segments_command_with_full_flag(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
-    executable_header = RawExecutableHeader(raw_data)
-
     command = SegmentsCommand(
         RawSegments(
             raw_data,
-            RawProgramHeaders(raw_data, executable_header),
+            RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
         )
     )
 
@@ -554,3 +553,35 @@ def test_segments_command_with_full_flag(
             ).match(line)
             is not None
         )
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    [
+        "tests/samples/binaries/binary",
+        "tests/samples/binaries/binary-2",
+    ],
+    indirect=True,
+)
+def test_dynamic_command(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    command = DynamicCommand(
+        RawSegments(
+            raw_data,
+            RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
+        )
+    )
+
+    assert command.name() == "dynamic"
+
+    command.execute([])
+
+    output = capsys.readouterr().out.strip().splitlines()
+
+    assert re.match(
+        r"\s*Idx\s+Tag\s+Value",
+        output[0],
+    )
+    for line in output[1:]:
+        assert re.match(r"^\[\d+]\s+(DT_\w+|0x[0-9a-f]{8})\s+\d+$", line)

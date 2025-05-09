@@ -5,7 +5,7 @@ from _pytest.capture import CaptureFixture
 from _pytest.fixtures import FixtureRequest
 
 from src.elf.executable_header import RawExecutableHeader
-from src.elf.program_header import RawProgramHeaders
+from src.elf.program_header import ProgramHeader, RawProgramHeaders
 from src.elf.section import (
     RawDisassembly,
     RawSection,
@@ -14,9 +14,10 @@ from src.elf.section import (
     RawSymbolTable,
 )
 from src.elf.section_header import RawSectionHeaders
-from src.elf.segment import RawSegments
+from src.elf.segment import RawDynamic, RawSegments
 from src.view.view import (
     PrintableDisassembly,
+    PrintableDynamic,
     PrintableExecutableHeader,
     PrintableSection,
     PrintableSections,
@@ -374,3 +375,26 @@ def test_printing_full_segments(
             ).match(line)
             is not None
         )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
+)
+def test_printing_dynamic_entries(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    segments = RawSegments(
+        raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
+    )
+    for segment in segments.all():
+        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+            PrintableDynamic(RawDynamic(segment)).print()
+
+    output = capsys.readouterr().out.strip().splitlines()
+
+    assert re.match(
+        r"\s*Idx\s+Tag\s+Value",
+        output[0],
+    )
+    for line in output[1:]:
+        assert re.match(r"^\[\d+]\s+(DT_\w+|0x[0-9a-f]{8})\s+\d+$", line)

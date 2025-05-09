@@ -2,6 +2,7 @@ from argparse import Namespace
 
 from src.control.argument import ArgumentParser
 from src.control.command import (
+    DynamicCommand,
     DynsymCommand,
     ExecutableHeaderCommand,
     FiniCommand,
@@ -52,6 +53,7 @@ class Application:
                         SymtabCommand(sections, arguments.validate),
                         DynsymCommand(sections, arguments.validate),
                         SegmentsCommand(segments),
+                        DynamicCommand(segments, arguments.validate),
                     ],
                 )
             )

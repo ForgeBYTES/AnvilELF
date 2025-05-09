@@ -3,6 +3,7 @@ from argparse import Namespace
 
 from src.control.argument import ArgumentParser
 from src.elf.executable_header import ExecutableHeader
+from src.elf.program_header import ProgramHeader
 from src.elf.section import (
     RawDisassembly,
     RawStringTable,
@@ -11,9 +12,16 @@ from src.elf.section import (
     SymbolTable,
     ValidatedSymbolTable,
 )
-from src.elf.segment import Segments
+from src.elf.segment import (
+    Dynamic,
+    RawDynamic,
+    Segment,
+    Segments,
+    ValidatedDynamic,
+)
 from src.view.view import (
     PrintableDisassembly,
+    PrintableDynamic,
     PrintableExecutableHeader,
     PrintableSection,
     PrintableSections,
@@ -214,3 +222,25 @@ class SegmentsCommand(Command):
         parser = ArgumentParser(prog=name, add_help=False)
         parser.add_argument("-f", "--full", action="store_true")
         return parser.parse_args(raw_arguments)
+
+
+class DynamicCommand(Command):
+    __NAME = "dynamic"
+
+    def __init__(self, segments: Segments, validated: bool = False):
+        self.__segments = segments
+        self.__validated = validated
+
+    def name(self) -> str:
+        return self.__NAME
+
+    def execute(self, raw_arguments: list[str]) -> None:
+        for segment in self.__segments.all():
+            if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+                PrintableDynamic(self.__dynamic(segment)).print()
+                return
+        raise ValueError("Segment PT_DYNAMIC not found")  # pragma: no cover
+
+    def __dynamic(self, segment: Segment) -> Dynamic:
+        dynamic = RawDynamic(segment)
+        return ValidatedDynamic(dynamic) if self.__validated else dynamic

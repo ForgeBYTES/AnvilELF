@@ -311,7 +311,7 @@ def test_symbol_change_reflects_in_raw_data(raw_data: bytearray) -> None:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_returning_fields_of_unprocessable_binary(
+def test_raising_on_returning_symbol_fields_of_unprocessable_binary(
     raw_data: bytearray,
 ) -> None:
     executable_header = RawExecutableHeader(raw_data)
@@ -332,7 +332,7 @@ def test_raising_on_returning_fields_of_unprocessable_binary(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_raising_on_changing_fields_with_missing_field(
+def test_raising_on_changing_symbol_fields_with_missing_field(
     raw_data: bytearray,
 ) -> None:
     executable_header = RawExecutableHeader(raw_data)

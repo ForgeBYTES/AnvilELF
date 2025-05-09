@@ -5,11 +5,19 @@ from _pytest.fixtures import FixtureRequest
 
 from src.elf.executable_header import RawExecutableHeader
 from src.elf.program_header import (
+    ProgramHeader,
     RawProgramHeader,
     RawProgramHeaders,
     ValidatedProgramHeaders,
 )
-from src.elf.segment import RawSegment, RawSegments
+from src.elf.segment import (
+    DynamicEntry,
+    RawDynamic,
+    RawDynamicEntry,
+    RawSegment,
+    RawSegments,
+    ValidatedDynamic,
+)
 
 
 @pytest.fixture
@@ -139,3 +147,122 @@ def test_returning_segment_raw_data(
 ) -> None:
     for segment in segments(raw_data).all():
         assert len(segment.raw_data()) == segment.header()["p_filesz"]
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_returning_all_dynamic_entries(raw_data: bytearray) -> None:
+    expected_entries = [
+        {"d_tag": 1, "d_un": 41},
+        {"d_tag": 12, "d_un": 4096},
+        {"d_tag": 13, "d_un": 4472},
+        {"d_tag": 25, "d_un": 15800},
+        {"d_tag": 27, "d_un": 8},
+        {"d_tag": 26, "d_un": 15808},
+        {"d_tag": 28, "d_un": 8},
+        {"d_tag": 1879047925, "d_un": 944},
+        {"d_tag": 5, "d_un": 1152},
+        {"d_tag": 6, "d_un": 984},
+        {"d_tag": 10, "d_un": 143},
+        {"d_tag": 11, "d_un": 24},
+        {"d_tag": 21, "d_un": 0},
+        {"d_tag": 3, "d_un": 16312},
+        {"d_tag": 2, "d_un": 24},
+        {"d_tag": 20, "d_un": 7},
+        {"d_tag": 23, "d_un": 1552},
+        {"d_tag": 7, "d_un": 1360},
+        {"d_tag": 8, "d_un": 192},
+        {"d_tag": 9, "d_un": 24},
+        {"d_tag": 30, "d_un": 8},
+        {"d_tag": 1879048187, "d_un": 134217729},
+        {"d_tag": 1879048190, "d_un": 1312},
+        {"d_tag": 1879048191, "d_un": 1},
+        {"d_tag": 1879048176, "d_un": 1296},
+        {"d_tag": 1879048185, "d_un": 3},
+        {"d_tag": 0, "d_un": 0},
+        {"d_tag": 0, "d_un": 0},
+        {"d_tag": 0, "d_un": 0},
+        {"d_tag": 0, "d_un": 0},
+        {"d_tag": 0, "d_un": 0},
+    ]
+
+    segments = RawSegments(
+        raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
+    ).all()
+    for segment in segments:
+        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+            assert [
+                entry.fields()
+                for entry in ValidatedDynamic(RawDynamic(segment)).all()
+            ] == expected_entries
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
+)
+def test_changing_dynamic_entry(raw_data: bytearray) -> None:
+    segments = RawSegments(
+        raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
+    ).all()
+    for segment in segments:
+        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+            for entry in ValidatedDynamic(RawDynamic(segment)).all():
+                fields = entry.fields()
+                if fields["d_tag"] == DynamicEntry.DT_NEEDED:
+
+                    new_d_un = fields["d_un"] + 32
+                    fields["d_un"] = new_d_un
+                    entry.change(fields)
+
+                    assert entry.fields()["d_un"] == new_d_un
+
+
+def test_raising_on_returning_unprocessable_dynamic_entry_fields() -> None:
+    with pytest.raises(ValueError, match="Unable to process data"):
+        RawDynamicEntry(memoryview(b"unprocessable data"), 123).fields()
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_changing_dynamic_entry_fields_with_missing_field(
+    raw_data: bytearray,
+) -> None:
+    segments = RawSegments(
+        raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
+    ).all()
+    for segment in segments:
+        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+            for entry in ValidatedDynamic(RawDynamic(segment)).all():
+                fields = entry.fields()
+                if fields["d_tag"] == DynamicEntry.DT_NEEDED:
+
+                    with pytest.raises(
+                        ValueError, match="Unable to process data"
+                    ):
+                        del fields["d_un"]
+                        entry.change(fields)
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_changing_dynamic_entry_with_invalid_fields(
+    raw_data: bytearray,
+) -> None:
+    expected_error = "Dynamic entry contains invalid fields: d_tag, invalid"
+
+    segments = RawSegments(
+        raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
+    ).all()
+    for segment in segments:
+        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+            for entry in ValidatedDynamic(RawDynamic(segment)).all():
+                fields = entry.fields()
+                if fields["d_tag"] == DynamicEntry.DT_NEEDED:
+
+                    with pytest.raises(ValueError, match=expected_error):
+                        fields["d_tag"] = 123
+                        fields["invalid"] = 123
+                        entry.change(fields)

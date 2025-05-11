@@ -49,6 +49,9 @@ anvil> sections --full
 anvil> segments
 anvil> segments --full
 
+# Show PT_DYNAMIC segment
+anvil> dynamic
+
 # Show a specific section by name
 anvil> section --name .shstrtab
 anvil> section --name .shstrtab --full

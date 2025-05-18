@@ -2,6 +2,7 @@ import struct
 from abc import ABC, abstractmethod
 
 from src.elf.program_header import ProgramHeader, ProgramHeaders
+from src.elf.validation import Validatable
 
 
 class Segment(ABC):
@@ -25,6 +26,10 @@ class Segment(ABC):
 class Segments(ABC):
     @abstractmethod
     def all(self) -> list[Segment]:
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def occurrence(self, p_type: int, p_flags: int | None = None) -> Segment:
         pass  # pragma: no cover
 
 
@@ -146,6 +151,18 @@ class RawSegments(Segments):
             for program_header in self.__program_headers.all()
         ]
 
+    def occurrence(self, p_type: int, p_flags: int | None = None) -> Segment:
+        for segment in self.all():
+            header = segment.header()
+            if header["p_type"] == p_type and (
+                p_flags is None or header["p_flags"] == p_flags
+            ):
+                return segment
+        raise ValueError(
+            f"No segment found with p_type {p_type}"
+            + (f" and p_flags 0x{p_flags:X}" if p_flags else "")
+        )
+
 
 class RawDynamicEntry(DynamicEntry):
     __STRUCT_FORMAT = "<qQ"
@@ -190,21 +207,22 @@ class RawDynamic(Dynamic):
         ]
 
 
-class ValidatedDynamicEntry(DynamicEntry):
+class ValidatedDynamicEntry(DynamicEntry, Validatable):
     def __init__(self, origin: DynamicEntry):
         self.__origin = origin
 
     def fields(self) -> dict[str, int]:
-        fields = self.__origin.fields()
-        self.__validate(fields)
-        return fields
+        return self.__origin.fields()
 
     def change(self, fields: dict[str, int]) -> None:
         self.__validate(fields)
         return self.__origin.change(fields)
 
+    def validate(self) -> None:
+        self.__validate(self.__origin.fields())
+
     def __validate(self, fields: dict[str, int]) -> None:
-        invalid_fields: list[str] = []
+        invalid_fields: dict[str, int] = {}
         for field, value in fields.items():
             match field:
                 case "d_tag":
@@ -216,20 +234,24 @@ class ValidatedDynamicEntry(DynamicEntry):
                             <= DynamicEntry.DT_HIPROC
                         )
                     ):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case _:
                     if field not in DynamicEntry.FIELDS:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
+
         if invalid_fields:
             raise ValueError(
-                f"Dynamic entry contains invalid fields: "
-                f"{', '.join(invalid_fields)}"
+                self.error_message("Dynamic entry", invalid_fields)
             )
 
 
-class ValidatedDynamic(Dynamic):
+class ValidatedDynamic(Dynamic, Validatable):
     def __init__(self, origin: Dynamic):
         self.__origin = origin
 
     def all(self) -> list[DynamicEntry]:
         return [ValidatedDynamicEntry(entry) for entry in self.__origin.all()]
+
+    def validate(self) -> None:
+        for entry in self.__origin.all():
+            ValidatedDynamicEntry(entry).validate()

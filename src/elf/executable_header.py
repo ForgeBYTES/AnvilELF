@@ -2,6 +2,8 @@ import struct
 from abc import ABC, abstractmethod
 from typing import Any
 
+from src.elf.validation import Validatable
+
 
 class ExecutableHeader(ABC):
     _HEADER_SIZE = 64
@@ -70,7 +72,7 @@ class RawExecutableHeader(ExecutableHeader):
             )
         except struct.error:
             raise ValueError("Unable to process data")
-        return {
+        fields = {
             "e_ident": {
                 "EI_MAG": _struct[0],
                 "EI_CLASS": _struct[1],
@@ -94,6 +96,8 @@ class RawExecutableHeader(ExecutableHeader):
             "e_shnum": _struct[18],
             "e_shstrndx": _struct[19],
         }
+        self.__assert_64_bit(fields)
+        return fields
 
     def change(self, fields: dict[str, Any]) -> None:
         try:
@@ -111,84 +115,80 @@ class RawExecutableHeader(ExecutableHeader):
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")
 
+    def __assert_64_bit(self, fields: dict[str, Any]) -> None:
+        if not (
+            fields["e_ident"]["EI_CLASS"] == self._ELFCLASS64
+            and fields["e_machine"] == self._EM_X86_64
+            and fields["e_ehsize"] == self._HEADER_SIZE
+        ):
+            raise ValueError("Binary must be 64-bit")
 
-class ValidatedExecutableHeader(ExecutableHeader):
+
+class ValidatedExecutableHeader(ExecutableHeader, Validatable):
     def __init__(self, origin: ExecutableHeader):
         self.__origin = origin
 
     def fields(self) -> dict[str, Any]:
-        fields = self.__origin.fields()
-        self.__validate_all(fields)
-        return fields
+        return self.__origin.fields()
 
     def change(self, fields: dict[str, Any]) -> None:
         self.__validate(fields)
         return self.__origin.change(fields)
 
-    def __validate_all(self, fields: dict[str, Any]) -> None:
-        if not self.__is_64_bit(fields):
-            raise ValueError("Binary must be 64-bit")
-        self.__validate(fields)
-
-    def __is_64_bit(self, fields: dict[str, Any]) -> bool:
-        return bool(
-            fields["e_ident"]["EI_CLASS"] == self._ELFCLASS64
-            and fields["e_machine"] == self._EM_X86_64
-            and fields["e_ehsize"] == self._HEADER_SIZE
-        )
+    def validate(self) -> None:
+        self.__validate(self.__origin.fields())
 
     def __validate(self, fields: dict[str, Any]) -> None:
-        invalid_fields: list[str] = []
+        invalid_fields: dict[str, Any] = {}
         for field, value in fields.items():
             match field:
                 case "e_ident":
-                    invalid_fields.extend(self.__invalid_e_ident(value))
+                    invalid_fields.update(self.__invalid_e_ident(value))
                 case "e_type":
                     if value not in self._TYPES:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "e_entry":
                     if value <= 0:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "e_phoff" | "e_shoff":
                     if not self.__is_aligned(value):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "e_ehsize":
                     if value != 64:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "e_shentsize":
                     if value not in [0, 64]:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "e_phentsize":
                     if value not in [0, 56]:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "e_flags":
                     if fields["e_machine"] == self._EM_X86_64 and value != 0:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case _:
                     if field not in self._FIELDS:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
         if invalid_fields:
             raise ValueError(
-                f"Executable header contains "
-                f"invalid fields: {', '.join(invalid_fields)}"
+                self.error_message("Executable header", invalid_fields)
             )
 
-    def __invalid_e_ident(self, fields: dict[str, Any]) -> list[str]:
-        invalid_fields: list[str] = []
+    def __invalid_e_ident(self, fields: dict[str, Any]) -> dict[str, Any]:
+        invalid_fields: dict[str, Any] = {}
         for field, value in fields.items():
             match field:
                 case "EI_MAG":
                     if value != self._MAGIC_VALUE:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "EI_DATA":
                     if value not in self._ENDIANNESS:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "EI_VERSION":
                     if value != 1:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case _:
                     if field not in self._E_INDENT_FIELDS:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
         return invalid_fields
 
     def __is_aligned(self, offset: int) -> bool:

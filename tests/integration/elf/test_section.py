@@ -358,14 +358,22 @@ def test_raising_on_changing_symbol_fields_with_missing_field(
 @pytest.mark.parametrize(
     "field, invalid_value, error",
     [
-        ("st_info", 254, "Symbol (Scrt1.o) contains invalid fields: st_info"),
+        (
+            "st_info",
+            254,
+            "Symbol (Scrt1.o) contains invalid values:\n  st_info=254",
+        ),
         ("st_other", 256, "Unable to process data"),
         (
             "st_shndx",
             999999,
-            "Symbol (Scrt1.o) contains invalid fields: st_shndx",
+            "Symbol (Scrt1.o) contains invalid values:\n  st_shndx=999999",
         ),
-        ("unknown", 123, "Symbol (Scrt1.o) contains invalid fields: unknown"),
+        (
+            "unknown",
+            123,
+            "Symbol (Scrt1.o) contains invalid values:\n  unknown=123",
+        ),
     ],
 )
 @pytest.mark.parametrize(
@@ -419,8 +427,10 @@ def test_raising_on_changing_multiple_symbol_fields_with_invalid_values(
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Symbol (Scrt1.o) contains invalid fields: "
-            "st_info, st_shndx, unknown"
+            "Symbol (Scrt1.o) contains invalid values:\n"
+            "  st_info=254\n"
+            "  st_shndx=999999\n"
+            "  unknown=123"
         ),
     ):
         ValidatedSymbol(symbol).change(fields)

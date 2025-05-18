@@ -206,34 +206,39 @@ def test_returning_all_section_headers(
         (
             "sh_type",
             20,
-            "Section header (27) contains invalid fields: sh_type",
+            "Section header (27) contains invalid values:\n  sh_type=20",
         ),
         (
             "sh_flags",
             0xDEADBEEF,
-            "Section header (27) contains invalid fields: sh_flags",
+            "Section header (27) contains invalid values:\n"
+            f"  sh_flags={0xDEADBEEF}",
         ),
         (
             "sh_addralign",
             3,
-            "Section header (27) contains invalid fields: sh_addralign",
+            "Section header (27) contains invalid values:\n  sh_addralign=3",
         ),
         (
             "sh_size",
             -1,
-            "Section header (27) contains invalid fields: sh_size",
+            "Section header (27) contains invalid values:\n  sh_size=-1",
         ),
         (
             "sh_offset",
             -1,
-            "Section header (27) contains invalid fields: sh_offset",
+            "Section header (27) contains invalid values:\n  sh_offset=-1",
         ),
         (
             "sh_link",
             -1,
-            "Section header (27) contains invalid fields: sh_link",
+            "Section header (27) contains invalid values:\n  sh_link=-1",
         ),
-        ("invalid", 2, "Section header (27) contains invalid fields: invalid"),
+        (
+            "invalid",
+            2,
+            "Section header (27) contains invalid values:\n  invalid=2",
+        ),
     ],
 )
 @pytest.mark.parametrize(
@@ -287,7 +292,7 @@ def test_raising_on_nonzero_sh_info_in_sht_dynamic(
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Section header (253) contains invalid fields: sh_info"
+            "Section header (253) contains invalid values:\n  sh_info=18"
         ),
     ):
         ValidatedSectionHeader(
@@ -325,7 +330,7 @@ def test_raising_on_zero_sh_entsize_in_sht_dynamic(
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Section header (253) contains invalid fields: sh_entsize"
+            "Section header (253) contains invalid values:\n  sh_entsize=0"
         ),
     ):
         ValidatedSectionHeader(
@@ -375,7 +380,7 @@ def test_changing_sh_addr_alignment(
         with pytest.raises(
             ValueError,
             match=re.escape(
-                "Section header (27) contains invalid fields: sh_addr"
+                "Section header (27) contains invalid values:\n  sh_addr=4099"
             ),
         ):
             section_header.change(expected_data)
@@ -399,8 +404,11 @@ def test_raising_on_changing_multiple_invalid_field_values(
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Section header (27) contains invalid fields: "
-            "sh_type, sh_flags, sh_size, sh_addralign"
+            "Section header (27) contains invalid values:\n"
+            "  sh_type=20\n"
+            f"  sh_flags={0xDEADBEEF}\n"
+            "  sh_size=-1\n"
+            "  sh_addralign=3"
         ),
     ):
         ValidatedSectionHeader(

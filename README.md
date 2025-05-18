@@ -43,14 +43,15 @@ anvil> header
 
 # List all sections
 anvil> sections
-anvil> sections --full
+anvil> sections --full --validate
 
 # List all segments
 anvil> segments
-anvil> segments --full
+anvil> segments --full --validate
 
 # Show PT_DYNAMIC segment
 anvil> dynamic
+anvil> dynamic --validate
 
 # Show a specific section by name
 anvil> section --name .shstrtab
@@ -68,8 +69,10 @@ anvil> fini
 
 # Inspect .symtab symbol table
 anvil> symtab
+anvil> symtab --validate
 # Inspect .dynsym symbol table
 anvil> dynsym
+anvil> dynsym --validate
 
 # Exit the shell
 anvil> exit

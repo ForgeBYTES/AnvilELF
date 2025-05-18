@@ -19,7 +19,7 @@ from src.control.command_line import (
     HistoricalCommandLine,
     InteractiveCommandLine,
 )
-from src.elf.binary import Binary, RawBinary, ValidatedBinary
+from src.elf.binary import RawBinary
 
 
 class Application:
@@ -38,22 +38,22 @@ class Application:
                 sections,
                 program_headers,
                 segments,
-            ) = self.__binary(arguments).components()
+            ) = RawBinary(arguments.binary).components()
             return HistoricalCommandLine(
                 InteractiveCommandLine(
                     self.__hint,
                     [
                         ExecutableHeaderCommand(executable_header),
-                        SectionsCommand(sections),
+                        SectionsCommand(sections, section_headers),
                         SectionCommand(sections),
                         TextCommand(sections),
                         PltCommand(sections),
                         InitCommand(sections),
                         FiniCommand(sections),
-                        SymtabCommand(sections, arguments.validate),
-                        DynsymCommand(sections, arguments.validate),
-                        SegmentsCommand(segments),
-                        DynamicCommand(segments, arguments.validate),
+                        SymtabCommand(sections),
+                        DynsymCommand(sections),
+                        SegmentsCommand(segments, program_headers),
+                        DynamicCommand(segments),
                     ],
                 )
             )
@@ -61,15 +61,7 @@ class Application:
             print(error)
             raise SystemExit(1)
 
-    def __binary(self, arguments: Namespace) -> Binary:
-        return (
-            ValidatedBinary(RawBinary(arguments.binary))
-            if arguments.validate
-            else RawBinary(arguments.binary)
-        )
-
     def __arguments(self, argv: list[str]) -> Namespace:
         parser = ArgumentParser(add_help=False)
         parser.add_argument("binary")
-        parser.add_argument("-v", "--validate", action="store_true")
         return parser.parse_args(argv[1:])

@@ -5,6 +5,7 @@ import capstone
 
 from src.elf.executable_header import ExecutableHeader
 from src.elf.section_header import SectionHeader, SectionHeaders
+from src.elf.validation import Validatable
 
 
 class Section(ABC):
@@ -296,14 +297,12 @@ class RawSymbol(Symbol):
         return int(self.fields()["st_other"] & 0x3)
 
 
-class ValidatedSymbol(Symbol):
+class ValidatedSymbol(Symbol, Validatable):
     def __init__(self, origin: Symbol):
         self.__origin = origin
 
     def fields(self) -> dict[str, int]:
-        fields = self.__origin.fields()
-        self.__validate(fields)
-        return fields
+        return self.__origin.fields()
 
     def change(self, fields: dict[str, int]) -> None:
         self.__validate(fields)
@@ -321,25 +320,27 @@ class ValidatedSymbol(Symbol):
     def visibility(self) -> int:
         return self.__origin.visibility()
 
+    def validate(self) -> None:
+        self.__validate(self.__origin.fields())
+
     def __validate(self, fields: dict[str, int]) -> None:
-        invalid_fields: list[str] = []
+        invalid_fields: dict[str, int] = {}
         for field, value in fields.items():
             match field:
                 case "st_info":
                     _type = value & 0xF
                     bind = value >> 4
                     if bind not in self.BINDS or _type not in self.TYPES:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "st_shndx":
                     if not (0 <= value <= 0xFFFF):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case _:
-                    if field not in self.FIELDS:
-                        invalid_fields.append(field)
+                    if field not in self.FIELDS:  # pragma: no cover
+                        invalid_fields[field] = value
         if invalid_fields:
             raise ValueError(
-                f"Symbol ({self.name()}) contains "
-                f"invalid fields: {', '.join(invalid_fields)}"
+                self.error_message(f"Symbol ({self.name()})", invalid_fields)
             )
 
 
@@ -356,12 +357,16 @@ class RawSymbolTable(SymbolTable):
         ]
 
 
-class ValidatedSymbolTable(SymbolTable):
+class ValidatedSymbolTable(SymbolTable, Validatable):
     def __init__(self, origin: SymbolTable):
         self.__origin = origin
 
     def symbols(self) -> list[Symbol]:
         return [ValidatedSymbol(symbol) for symbol in self.__origin.symbols()]
+
+    def validate(self) -> None:
+        for symbol in self.__origin.symbols():
+            ValidatedSymbol(symbol).validate()
 
 
 class RawDisassembly(Disassembly):

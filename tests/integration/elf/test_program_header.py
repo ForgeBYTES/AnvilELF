@@ -201,27 +201,32 @@ def test_returning_all_program_headers(
         (
             "invalid",
             123,
-            "Program header (1) contains invalid fields: invalid",
+            "Program header (p_offset=64) contains invalid values:\n"
+            "  invalid=123",
         ),
         (
             "p_type",
             0xFFFFFFFF,
-            "Program header (4294967295) contains invalid fields: p_type",
+            "Program header (p_offset=64) contains invalid values:\n"
+            f"  p_type={0xFFFFFFFF}",
         ),
         (
             "p_align",
             6,
-            "Program header (1) contains invalid fields: p_align",
+            "Program header (p_offset=64) contains invalid values:\n"
+            "  p_align=6",
         ),
         (
             "p_flags",
             0xDEADBEEF,
-            "Program header (1) contains invalid fields: p_flags",
+            "Program header (p_offset=64) contains invalid values:\n"
+            f"  p_flags={0xDEADBEEF}",
         ),
         (
             "p_offset",
             -1,
-            "Program header (1) contains invalid fields: p_offset",
+            "Program header (p_offset=-1) contains invalid values:\n"
+            "  p_offset=-1",
         ),
     ],
 )
@@ -289,7 +294,9 @@ def test_raising_on_multiple_invalid_fields(
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Program header (1) contains invalid fields: p_flags, invalid"
+            "Program header (p_offset=64) contains invalid values:\n"
+            f"  p_flags={0xDEADBEEF}\n"
+            "  invalid=456"
         ),
     ):
         ValidatedProgramHeader(

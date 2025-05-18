@@ -1,11 +1,11 @@
 import shutil
 from pathlib import Path
-from typing import Callable, Generator
+from typing import Generator
 from unittest.mock import patch
 
 import pytest
 
-from src.elf.binary import RawBinary, ValidatedBinary
+from src.elf.binary import RawBinary
 from src.elf.executable_header import ExecutableHeader
 from src.elf.program_header import ProgramHeaders
 from src.elf.section import Sections
@@ -29,16 +29,8 @@ def prepare_temporary_binaries() -> Generator[None, None, None]:
             file.unlink()
 
 
-@pytest.mark.parametrize(
-    "binary",
-    [
-        lambda path: RawBinary(path),
-        lambda path: ValidatedBinary(RawBinary(path)),
-    ],
-)
 def test_replacing_shstrtab_and_saving_binary(
     prepare_temporary_binaries: Generator[None, None, None],
-    binary: Callable[[str], RawBinary | ValidatedBinary],
 ) -> None:
     path = "tests/samples/temporary_binaries/stripped-binary"
     new_shstrtab = (
@@ -50,7 +42,7 @@ def test_replacing_shstrtab_and_saving_binary(
         b".init_array\x00.fini_array\x00.dynamic\x00.data\x00.bss\x00"
         b".comment\x00"
     )
-    original_binary = binary(path)
+    original_binary = RawBinary(path)
 
     executable_header, section_header, sections, program_headers, segments = (
         original_binary.components()

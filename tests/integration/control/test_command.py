@@ -14,6 +14,7 @@ from src.control.command import (
     SectionCommand,
     SectionsCommand,
     SegmentsCommand,
+    SymtabCommand,
     TextCommand,
 )
 from src.elf.executable_header import RawExecutableHeader
@@ -30,10 +31,14 @@ def raw_data(request: FixtureRequest) -> bytearray:
 
 
 @pytest.mark.parametrize(
+    "validated",
+    [True, False],
+)
+@pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_executable_header_command(
-    raw_data: bytearray, capsys: CaptureFixture[str]
+def test_executable_header_command_with_all_flags(
+    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
 ) -> None:
     expected_output = (
         "Executable Header:\n"
@@ -62,11 +67,51 @@ def test_executable_header_command(
 
     assert command.name() == "header"
 
-    command.execute([])
+    command.execute(["--validate"] if validated else [])
 
     assert capsys.readouterr().out == expected_output
 
 
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/corrupted-binary"], indirect=True
+)
+def test_executable_header_command_with_corrupted_binary_and_validate_flag(
+    raw_data: bytearray,
+) -> None:
+    expected_error = (
+        "Executable header contains invalid values:\n"
+        "  e_type=5\n"
+        "  e_flags=3735928559"
+    )
+
+    command = ExecutableHeaderCommand(RawExecutableHeader(raw_data))
+
+    assert command.name() == "header"
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        command.execute(["--validate"])
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-32bit"], indirect=True
+)
+def test_executable_header_command_with_32_bit_binary(
+    raw_data: bytearray,
+) -> None:
+    expected_error = "Binary must be 64-bit"
+
+    command = ExecutableHeaderCommand(RawExecutableHeader(raw_data))
+
+    assert command.name() == "header"
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        command.execute(["--validate"])
+
+
+@pytest.mark.parametrize(
+    "validated",
+    [True, False],
+)
 @pytest.mark.parametrize(
     "raw_data",
     [
@@ -75,22 +120,23 @@ def test_executable_header_command(
     ],
     indirect=True,
 )
-def test_sections_command_with_full_flag(
-    raw_data: bytearray, capsys: CaptureFixture[str]
+def test_sections_command_with_all_flags(
+    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
 ) -> None:
     executable_header = RawExecutableHeader(raw_data)
-
+    sections_headers = RawSectionHeaders(raw_data, executable_header)
     command = SectionsCommand(
         RawSections(
             raw_data,
-            RawSectionHeaders(raw_data, executable_header),
+            sections_headers,
             executable_header,
-        )
+        ),
+        sections_headers,
     )
 
     assert command.name() == "sections"
 
-    command.execute(["--full"])
+    command.execute(["--full", "--validate"] if validated else ["--full"])
 
     output = capsys.readouterr().out.strip().splitlines()
 
@@ -116,6 +162,35 @@ def test_sections_command_with_full_flag(
                 r"\d+\s*$"
             )
         ).match(line) is not None
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/corrupted-binary"], indirect=True
+)
+def test_sections_command_with_corrupted_binary_and_validate_flag(
+    raw_data: bytearray,
+) -> None:
+    expected_error = (
+        "Section header (27) contains invalid values:\n"
+        "  sh_type=20\n"
+        "  sh_flags=3735928559"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections_headers = RawSectionHeaders(raw_data, executable_header)
+    command = SectionsCommand(
+        RawSections(
+            raw_data,
+            sections_headers,
+            executable_header,
+        ),
+        sections_headers,
+    )
+
+    assert command.name() == "sections"
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        command.execute(["--validate"])
 
 
 @pytest.mark.parametrize(
@@ -290,7 +365,7 @@ def test_section_command_with_stripped_section_headers_and_full_flag(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_symbol_table_command(
+def test_symbol_table_command_with_all_flags(
     raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
 ) -> None:
     expected_header = "Symbol Table: .dynsym"
@@ -306,13 +381,12 @@ def test_symbol_table_command(
             raw_data,
             RawSectionHeaders(raw_data, executable_header),
             executable_header,
-        ),
-        validated,
+        )
     )
 
     assert command.name() == "dynsym"
 
-    command.execute([])
+    command.execute(["--validate"] if validated else [])
 
     output = capsys.readouterr().out.splitlines()
 
@@ -332,6 +406,56 @@ def test_symbol_table_command(
             ).match(line)
             is not None
         )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/corrupted-binary"], indirect=True
+)
+def test_dynsym_command_with_corrupted_binary_validate_flag(
+    raw_data: bytearray,
+) -> None:
+    expected_error = (
+        "Symbol (__libc_start_main) contains invalid values:\n  st_info=254"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+
+    command = DynsymCommand(
+        RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, executable_header),
+            executable_header,
+        )
+    )
+
+    assert command.name() == "dynsym"
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        command.execute(["--validate"])
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/corrupted-binary"], indirect=True
+)
+def test_symtab_command_with_corrupted_binary_and_validate_flag(
+    raw_data: bytearray,
+) -> None:
+    expected_error = "Symbol (Scrt1.o) contains invalid values:\n  st_info=254"
+
+    executable_header = RawExecutableHeader(raw_data)
+
+    command = SymtabCommand(
+        RawSections(
+            raw_data,
+            RawSectionHeaders(raw_data, executable_header),
+            executable_header,
+        )
+    )
+
+    assert command.name() == "symtab"
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        command.execute(["--validate"])
 
 
 @pytest.mark.parametrize(
@@ -509,6 +633,10 @@ def test_section_command_raising_on_nonexistent_section(
 
 
 @pytest.mark.parametrize(
+    "validated",
+    [True, False],
+)
+@pytest.mark.parametrize(
     "raw_data",
     [
         "tests/samples/binaries/binary",
@@ -516,19 +644,23 @@ def test_section_command_raising_on_nonexistent_section(
     ],
     indirect=True,
 )
-def test_segments_command_with_full_flag(
-    raw_data: bytearray, capsys: CaptureFixture[str]
+def test_segments_command_with_all_flags(
+    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
 ) -> None:
+    program_headers = RawProgramHeaders(
+        raw_data, RawExecutableHeader(raw_data)
+    )
     command = SegmentsCommand(
         RawSegments(
             raw_data,
-            RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
-        )
+            program_headers,
+        ),
+        program_headers,
     )
 
     assert command.name() == "segments"
 
-    command.execute(["--full"])
+    command.execute(["--full", "--validate"] if validated else ["--full"])
 
     output = capsys.readouterr().out.strip().splitlines()
 
@@ -557,6 +689,41 @@ def test_segments_command_with_full_flag(
 
 @pytest.mark.parametrize(
     "raw_data",
+    ["tests/samples/binaries/corrupted-binary"],
+    indirect=True,
+)
+def test_segments_command_with_corrupted_binary_and_validate_flag(
+    raw_data: bytearray,
+) -> None:
+    expected_error = (
+        "Program header (p_offset=792) contains invalid values:\n"
+        "  p_type=4294967295\n"
+        "  p_flags=3735928559"
+    )
+
+    program_headers = RawProgramHeaders(
+        raw_data, RawExecutableHeader(raw_data)
+    )
+    command = SegmentsCommand(
+        RawSegments(
+            raw_data,
+            program_headers,
+        ),
+        program_headers,
+    )
+
+    assert command.name() == "segments"
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        command.execute(["--validate"])
+
+
+@pytest.mark.parametrize(
+    "validated",
+    [True, False],
+)
+@pytest.mark.parametrize(
+    "raw_data",
     [
         "tests/samples/binaries/binary",
         "tests/samples/binaries/binary-2",
@@ -564,7 +731,7 @@ def test_segments_command_with_full_flag(
     indirect=True,
 )
 def test_dynamic_command(
-    raw_data: bytearray, capsys: CaptureFixture[str]
+    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
 ) -> None:
     command = DynamicCommand(
         RawSegments(
@@ -575,7 +742,7 @@ def test_dynamic_command(
 
     assert command.name() == "dynamic"
 
-    command.execute([])
+    command.execute(["--validate"] if validated else [])
 
     output = capsys.readouterr().out.strip().splitlines()
 
@@ -585,3 +752,26 @@ def test_dynamic_command(
     )
     for line in output[1:]:
         assert re.match(r"^\[\d+]\s+(DT_\w+|0x[0-9a-f]{8})\s+\d+$", line)
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/binaries/corrupted-binary"],
+    indirect=True,
+)
+def test_dynamic_command_with_corrupted_binary_and_validate_flag(
+    raw_data: bytearray,
+) -> None:
+    expected_error = "Dynamic entry contains invalid values:\n  d_tag=123"
+
+    command = DynamicCommand(
+        RawSegments(
+            raw_data,
+            RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
+        )
+    )
+
+    assert command.name() == "dynamic"
+
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        command.execute(["--validate"])

@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from src.elf.executable_header import ExecutableHeader
+from src.elf.validation import Validatable
 
 
 class SectionHeader(ABC):
@@ -172,7 +173,7 @@ class RawSectionHeaders(SectionHeaders):
         )
 
 
-class ValidatedSectionHeader(SectionHeader):
+class ValidatedSectionHeader(SectionHeader, Validatable):
     def __init__(
         self,
         origin: SectionHeader,
@@ -182,55 +183,58 @@ class ValidatedSectionHeader(SectionHeader):
         self.__section_headers = section_headers
 
     def fields(self) -> dict[str, int]:
-        fields = self.__origin.fields()
-        self.__validate(fields, self.__section_headers)
-        return fields
+        return self.__origin.fields()
 
     def change(self, fields: dict[str, int]) -> None:
         self.__validate(fields, self.__section_headers)
         self.__origin.change(fields)
+
+    def validate(self) -> None:
+        self.__validate(self.__origin.fields(), self.__section_headers)
 
     def __validate(
         self,
         fields: dict[str, int],
         section_headers: SectionHeaders,
     ) -> None:
-        invalid_fields: list[str] = []
+        invalid_fields: dict[str, int] = {}
         for field, value in fields.items():
             match field:
                 case "sh_type":
                     if not self.__is_valid_type(value):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "sh_flags":
                     if value & ~self.FLAGS != 0:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "sh_addralign":
                     if not self.__is_power_of_two(value):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "sh_size" | "sh_offset":
                     if value < 0:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "sh_addr":
                     if not self.__is_sh_addr_aligned(value, fields):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "sh_link":
                     if not self.__is_sh_link_valid(
                         value, fields, section_headers.all()
                     ):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "sh_info":
                     if not self.__is_sh_info_valid(value, fields):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "sh_entsize":
                     if not self.__is_sh_entsize_valid(value, fields):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case _:
                     if field not in self.FIELDS:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
         if invalid_fields:
             raise ValueError(
-                f"Section header ({fields['sh_name']}) contains "
-                f"invalid fields: {', '.join(invalid_fields)}"
+                self.error_message(
+                    f"Section header ({fields['sh_name']})",
+                    invalid_fields,
+                )
             )
 
     def __is_valid_type(self, sh_type: int) -> bool:
@@ -324,7 +328,7 @@ class ValidatedSectionHeader(SectionHeader):
         )
 
 
-class ValidatedSectionHeaders(SectionHeaders):
+class ValidatedSectionHeaders(SectionHeaders, Validatable):
     def __init__(self, origin: SectionHeaders):
         self.__origin = origin
 
@@ -333,3 +337,7 @@ class ValidatedSectionHeaders(SectionHeaders):
             ValidatedSectionHeader(section_header, self.__origin)
             for section_header in self.__origin.all()
         ]
+
+    def validate(self) -> None:
+        for section_header in self.all():
+            ValidatedSectionHeader(section_header, self.__origin).validate()

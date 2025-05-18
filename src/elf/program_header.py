@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from src.elf.executable_header import ExecutableHeader
+from src.elf.validation import Validatable
 
 
 class ProgramHeader(ABC):
@@ -125,44 +126,47 @@ class RawProgramHeaders(ProgramHeaders):
         )
 
 
-class ValidatedProgramHeader(ProgramHeader):
+class ValidatedProgramHeader(ProgramHeader, Validatable):
     def __init__(self, origin: ProgramHeader):
         self.__origin = origin
 
     def fields(self) -> dict[str, int]:
-        fields = self.__origin.fields()
-        self.__validate(fields)
-        return fields
+        return self.__origin.fields()
 
     def change(self, fields: dict[str, int]) -> None:
         self.__validate(fields)
         self.__origin.change(fields)
 
+    def validate(self) -> None:
+        self.__validate(self.__origin.fields())
+
     def __validate(self, fields: dict[str, int]) -> None:
-        invalid_fields: list[str] = []
+        invalid_fields: dict[str, int] = {}
         for field, value in fields.items():
             match field:
                 case "p_type":
                     if not self.__is_valid_type(value):
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "p_flags":
                     if value & ~(self.PF_X | self.PF_W | self.PF_R) != 0:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case "p_align":
                     if not self.__is_power_of_two(value) and value != 0:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case (
                     "p_filesz" | "p_memsz" | "p_offset" | "p_vaddr" | "p_paddr"
                 ):
                     if value < 0:
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
                 case _:
                     if field not in self.FIELDS:  # pragma: no cover
-                        invalid_fields.append(field)
+                        invalid_fields[field] = value
         if invalid_fields:
             raise ValueError(
-                f"Program header ({fields['p_type']}) "
-                f"contains invalid fields: {', '.join(invalid_fields)}"
+                self.error_message(
+                    f"Program header (p_offset={fields['p_offset']})",
+                    invalid_fields,
+                )
             )
 
     def __is_valid_type(self, p_type: int) -> bool:
@@ -186,7 +190,7 @@ class ValidatedProgramHeader(ProgramHeader):
         return (value & (value - 1)) == 0
 
 
-class ValidatedProgramHeaders(ProgramHeaders):
+class ValidatedProgramHeaders(ProgramHeaders, Validatable):
     def __init__(self, origin: ProgramHeaders):
         self.__origin = origin
 
@@ -195,3 +199,7 @@ class ValidatedProgramHeaders(ProgramHeaders):
             ValidatedProgramHeader(program_header)
             for program_header in self.__origin.all()
         ]
+
+    def validate(self) -> None:
+        for program_header in self.__origin.all():
+            ValidatedProgramHeader(program_header).validate()

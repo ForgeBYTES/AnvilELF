@@ -114,8 +114,7 @@ class RawSegment(Segment):
         fields = self.__header.fields()
         if self.__is_in_range(fields):
             return memoryview(self.__raw_data)[
-                fields["p_offset"] : fields["p_offset"]  # noqa: E203
-                + fields["p_filesz"]
+                fields["p_offset"] : fields["p_offset"] + fields["p_filesz"]
             ]
         raise ValueError("Exceeded segment size")
 
@@ -126,8 +125,7 @@ class RawSegment(Segment):
         ):
             raise ValueError("Invalid segment size")
         self.__raw_data[
-            fields["p_offset"] : fields["p_offset"]  # noqa: E203
-            + fields["p_filesz"]
+            fields["p_offset"] : fields["p_offset"] + fields["p_filesz"]
         ] = data
 
     def type(self) -> str:
@@ -187,7 +185,7 @@ class RawDynamicEntry(DynamicEntry):
     def change(self, fields: dict[str, int]) -> None:
         try:
             self.__raw_data[
-                self.__offset : self.__offset + self.ENTRY_SIZE  # noqa: E203
+                self.__offset : self.__offset + self.ENTRY_SIZE
             ] = struct.pack(
                 self.__STRUCT_FORMAT, *(fields[field] for field in self.FIELDS)
             )

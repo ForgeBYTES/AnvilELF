@@ -1,5 +1,3 @@
-import shutil
-from pathlib import Path
 from typing import Generator
 from unittest.mock import patch
 
@@ -11,22 +9,6 @@ from src.elf.program_header import ProgramHeaders
 from src.elf.section import Sections
 from src.elf.section_header import SectionHeaders
 from src.elf.segment import Segments
-
-
-@pytest.fixture
-def prepare_temporary_binaries() -> Generator[None, None, None]:
-    original_path = Path("tests/samples/binaries")
-    temporary_path = Path("tests/samples/temporary_binaries")
-
-    for file in original_path.iterdir():
-        if file.is_file():  # pragma: no cover
-            shutil.copy(file, temporary_path)
-
-    yield
-
-    for file in temporary_path.iterdir():
-        if file.name != ".gitkeep":
-            file.unlink()
 
 
 def test_replacing_shstrtab_and_saving_binary(

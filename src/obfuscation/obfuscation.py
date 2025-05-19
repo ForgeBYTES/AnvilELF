@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 from src.elf.binary import Binary
 from src.elf.executable_header import ExecutableHeader, RawExecutableHeader
 from src.elf.program_header import ProgramHeaders
@@ -6,7 +8,13 @@ from src.elf.section_header import RawSectionHeaders, SectionHeaders
 from src.elf.segment import Segments
 
 
-class HeaderlessBinary(Binary):
+class Obfuscated(ABC):
+    @abstractmethod
+    def obfuscate(self) -> None:
+        pass  # pragma: no cover
+
+
+class HeaderlessBinary(Binary, Obfuscated):
     def __init__(self, origin: Binary):
         self.__origin = origin
         self.__stripped = False
@@ -16,21 +24,16 @@ class HeaderlessBinary(Binary):
     ) -> tuple[
         ExecutableHeader, SectionHeaders, Sections, ProgramHeaders, Segments
     ]:
-        self.__ensure_stripped()
         return self.__origin.components()
 
     def raw_data(self) -> bytearray:
-        self.__ensure_stripped()
         return self.__origin.raw_data()
 
     def save(self) -> None:
-        self.__ensure_stripped()
         self.__origin.save()
 
-    def __ensure_stripped(self) -> None:
-        if not self.__stripped:
-            self.__strip(self.__origin.raw_data())
-            self.__stripped = True
+    def obfuscate(self) -> None:
+        self.__strip(self.__origin.raw_data())
 
     def __strip(self, raw_data: bytearray) -> None:
         executable_header = RawExecutableHeader(raw_data)

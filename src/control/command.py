@@ -79,7 +79,7 @@ class SectionsCommand(Command):
         arguments = self.__arguments(self.__NAME, raw_arguments)
         if arguments.validate:
             ValidatedSectionHeaders(self.__section_headers).validate()
-        PrintableSections(self.__sections, full=arguments.full).print()
+        PrintableSections(self.__sections, arguments.full).print()
 
     def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)

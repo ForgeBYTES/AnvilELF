@@ -118,8 +118,7 @@ class RawSectionHeader(SectionHeader):
                     struct.unpack(
                         self.__STRUCT_FORMAT,
                         self.__raw_data[
-                            self.__offset : self.__offset  # noqa: E203
-                            + self.HEADER_SIZE
+                            self.__offset : self.__offset + self.HEADER_SIZE
                         ],
                     ),
                 )
@@ -134,7 +133,7 @@ class RawSectionHeader(SectionHeader):
                 *(fields[field] for field in self.FIELDS),
             )
             self.__raw_data[
-                self.__offset : self.__offset + self.HEADER_SIZE  # noqa: E203
+                self.__offset : self.__offset + self.HEADER_SIZE
             ] = _struct
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")

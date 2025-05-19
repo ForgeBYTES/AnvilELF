@@ -72,8 +72,7 @@ class RawProgramHeader(ProgramHeader):
                     struct.unpack(
                         self.__STRUCT_FORMAT,
                         self.__raw_data[
-                            self.__offset : self.__offset  # noqa: E203
-                            + self.HEADER_SIZE
+                            self.__offset : self.__offset + self.HEADER_SIZE
                         ],
                     ),
                 )
@@ -84,7 +83,7 @@ class RawProgramHeader(ProgramHeader):
     def change(self, fields: dict[str, int]) -> None:
         try:
             self.__raw_data[
-                self.__offset : self.__offset + self.HEADER_SIZE  # noqa: E203
+                self.__offset : self.__offset + self.HEADER_SIZE
             ] = struct.pack(
                 self.__STRUCT_FORMAT,
                 *(fields[field] for field in self.FIELDS),

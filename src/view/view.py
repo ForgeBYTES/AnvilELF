@@ -207,7 +207,7 @@ class PrintableDisassembly(Printable):
     ) -> list[str]:
         instructions = disassembly.instructions()
         return (
-            instructions[offset : offset + size]  # noqa: E203
+            instructions[offset : offset + size]
             if size
             else instructions[offset:]
         )

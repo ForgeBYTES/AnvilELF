@@ -1,6 +1,4 @@
-import shutil
 import subprocess
-from pathlib import Path
 from typing import Generator
 
 import pytest
@@ -10,22 +8,6 @@ from src.elf.executable_header import ExecutableHeader
 from src.elf.section import Sections
 from src.elf.section_header import SectionHeaders
 from src.obfuscation.obfuscation import HeaderlessBinary
-
-
-@pytest.fixture
-def prepare_temporary_binaries() -> Generator[None, None, None]:
-    original_path = Path("tests/samples/binaries")
-    temporary_path = Path("tests/samples/temporary_binaries")
-
-    for file in original_path.iterdir():
-        if file.is_file():  # pragma: no cover
-            shutil.copy(file, temporary_path)
-
-    yield
-
-    for file in temporary_path.iterdir():
-        if file.name != ".gitkeep":
-            file.unlink()
 
 
 def test_removing_binary_section_headers(
@@ -46,6 +28,7 @@ def test_removing_binary_section_headers(
     )
 
     headerless_binary = HeaderlessBinary(RawBinary(path))
+    headerless_binary.obfuscate()
     headerless_binary.save()
 
     assert headerless_binary.raw_data() != original_data
@@ -102,6 +85,7 @@ def test_returning_components_by_headerless_binary(
     path = "tests/samples/temporary_binaries/binary"
 
     headerless_binary = HeaderlessBinary(RawBinary(path))
+    headerless_binary.obfuscate()
     executable_header, section_headers, sections, program_headers, segments = (
         headerless_binary.components()
     )

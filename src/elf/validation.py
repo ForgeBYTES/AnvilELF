@@ -10,7 +10,12 @@ class Validatable(ABC):
     def error_message(
         self, component: str, invalid_fields: dict[str, Any]
     ) -> str:
-        errors = "\n".join(
+        return (
+            f"{component} contains invalid values:\n"
+            f"{self.__errors(invalid_fields)}"
+        )
+
+    def __errors(self, invalid_fields: dict[str, Any]) -> str:
+        return "\n".join(
             f"  {field}={value!r}" for field, value in invalid_fields.items()
         )
-        return f"{component} contains invalid values:\n{errors}"

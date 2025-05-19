@@ -158,8 +158,7 @@ class RawSection(Section):
         fields = self.__section_header.fields()
         if self.__is_in_range(fields):
             return memoryview(self.__raw_data)[
-                fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
-                + fields["sh_size"]
+                fields["sh_offset"] : fields["sh_offset"] + fields["sh_size"]
             ]
         raise ValueError("Exceeded section size")
 
@@ -170,8 +169,7 @@ class RawSection(Section):
         ):
             raise ValueError("Invalid section size")
         self.__raw_data[
-            fields["sh_offset"] : fields["sh_offset"]  # noqa: E203
-            + fields["sh_size"]
+            fields["sh_offset"] : fields["sh_offset"] + fields["sh_size"]
         ] = data
 
     def name(self) -> str:
@@ -279,7 +277,7 @@ class RawSymbol(Symbol):
                 *(fields[field] for field in self.FIELDS),
             )
             self.__raw_data[
-                self.__offset : self.__offset + self.ENTRY_SIZE  # noqa: E203
+                self.__offset : self.__offset + self.ENTRY_SIZE
             ] = _struct
         except (KeyError, struct.error):
             raise ValueError("Unable to process data")

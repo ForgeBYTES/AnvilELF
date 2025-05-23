@@ -22,13 +22,13 @@ from src.elf.section import (
 from src.elf.section_header import SectionHeaders, ValidatedSectionHeaders
 from src.elf.segment import RawDynamic, Segments, ValidatedDynamic
 from src.view.view import (
-    PrintableDisassembly,
-    PrintableDynamic,
-    PrintableExecutableHeader,
-    PrintableSection,
-    PrintableSections,
-    PrintableSegments,
-    PrintableSymbolTable,
+    FormattedDisassembly,
+    FormattedDynamic,
+    FormattedExecutableHeader,
+    FormattedSection,
+    FormattedSections,
+    FormattedSegments,
+    FormattedSymbolTable,
 )
 
 
@@ -38,7 +38,7 @@ class Command(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
-    def execute(self, raw_arguments: list[str]) -> None:
+    def output(self, raw_arguments: list[str]) -> str:
         pass  # pragma: no cover
 
 
@@ -51,14 +51,17 @@ class ExecutableHeaderCommand(Command):
     def name(self) -> str:
         return self.__NAME
 
-    def execute(self, raw_arguments: list[str]) -> None:
+    def output(self, raw_arguments: list[str]) -> str:
         arguments = self.__arguments(self.__NAME, raw_arguments)
         if arguments.validate:
             ValidatedExecutableHeader(self.__executable_header).validate()
-        PrintableExecutableHeader(self.__executable_header).print()
+        return FormattedExecutableHeader(
+            self.__executable_header, arguments.json
+        ).format()
 
     def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument("-j", "--json", action="store_true", default=False)
         parser.add_argument(
             "-v", "--validate", action="store_true", default=False
         )
@@ -75,15 +78,15 @@ class SectionsCommand(Command):
     def name(self) -> str:
         return self.__NAME
 
-    def execute(self, raw_arguments: list[str]) -> None:
+    def output(self, raw_arguments: list[str]) -> str:
         arguments = self.__arguments(self.__NAME, raw_arguments)
         if arguments.validate:
             ValidatedSectionHeaders(self.__section_headers).validate()
-        PrintableSections(self.__sections, arguments.full).print()
+        return FormattedSections(self.__sections, arguments.json).format()
 
     def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
-        parser.add_argument("-f", "--full", action="store_true", default=False)
+        parser.add_argument("-j", "--json", action="store_true", default=False)
         parser.add_argument(
             "-v", "--validate", action="store_true", default=False
         )
@@ -99,40 +102,19 @@ class SectionCommand(Command):
     def name(self) -> str:
         return self.__NAME
 
-    def execute(self, raw_arguments: list[str]) -> None:
+    def output(self, raw_arguments: list[str]) -> str:
         arguments = self.__arguments(self.__NAME, raw_arguments)
-        PrintableSection(
-            self.__sections.find(arguments.name), arguments.full
-        ).print()
+        return FormattedSection(
+            self.__sections.find(arguments.name),
+            arguments.full,
+            arguments.json,
+        ).format()
 
     def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
         parser.add_argument("-n", "--name", required=True)
         parser.add_argument("-f", "--full", action="store_true", default=False)
-        return parser.parse_args(raw_arguments)
-
-
-class TextCommand(Command):
-    __NAME = "text"
-
-    def __init__(self, sections: Sections):
-        self.__sections = sections
-
-    def name(self) -> str:
-        return self.__NAME
-
-    def execute(self, raw_arguments: list[str]) -> None:
-        arguments = self.__arguments(self.__NAME, raw_arguments)
-        PrintableDisassembly(
-            RawDisassembly(self.__sections.find(".text")),
-            arguments.offset,
-            arguments.size,
-        ).print()
-
-    def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
-        parser = ArgumentParser(prog=name, add_help=False)
-        parser.add_argument("-o", "--offset", type=int, default=0)
-        parser.add_argument("-s", "--size", type=int)
+        parser.add_argument("-j", "--json", action="store_true", default=False)
         return parser.parse_args(raw_arguments)
 
 
@@ -154,7 +136,7 @@ class StringTableCommand(Command):
     def name(self) -> str:
         return self.__command_name
 
-    def execute(self, raw_arguments: list[str]) -> None:
+    def output(self, raw_arguments: list[str]) -> str:
         arguments = self.__arguments(self.__command_name, raw_arguments)
         symbol_table = self.__symbol_table(
             self.__sections,
@@ -163,10 +145,11 @@ class StringTableCommand(Command):
         )
         if arguments.validate:
             ValidatedSymbolTable(symbol_table).validate()
-        PrintableSymbolTable(
+        return FormattedSymbolTable(
             symbol_table,
             self.__section_name,
-        ).print()
+            arguments.json,
+        ).format()
 
     def __symbol_table(
         self,
@@ -181,6 +164,7 @@ class StringTableCommand(Command):
 
     def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument("-j", "--json", action="store_true", default=False)
         parser.add_argument(
             "-v", "--validate", action="store_true", default=False
         )
@@ -208,10 +192,26 @@ class DisassemblyCommand(Command):
     def name(self) -> str:
         return self.__command_name
 
-    def execute(self, raw_arguments: list[str]) -> None:
-        PrintableDisassembly(
-            RawDisassembly(self.__sections.find(self.__section_name))
-        ).print()
+    def output(self, raw_arguments: list[str]) -> str:
+        arguments = self.__arguments(self.__command_name, raw_arguments)
+        return FormattedDisassembly(
+            RawDisassembly(self.__sections.find(self.__section_name)),
+            arguments.offset,
+            arguments.size,
+            arguments.json,
+        ).format()
+
+    def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
+        parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument("-o", "--offset", type=int, default=0)
+        parser.add_argument("-s", "--size", type=int, default=0)
+        parser.add_argument("-j", "--json", action="store_true", default=False)
+        return parser.parse_args(raw_arguments)
+
+
+class TextCommand(DisassemblyCommand):
+    def __init__(self, sections: Sections):
+        super().__init__(sections, "text", ".text")
 
 
 class PltCommand(DisassemblyCommand):
@@ -239,15 +239,15 @@ class SegmentsCommand(Command):
     def name(self) -> str:
         return self.__NAME
 
-    def execute(self, raw_arguments: list[str]) -> None:
+    def output(self, raw_arguments: list[str]) -> str:
         arguments = self.__arguments(self.__NAME, raw_arguments)
         if arguments.validate:
             ValidatedProgramHeaders(self.__program_headers).validate()
-        PrintableSegments(self.__segments, arguments.full).print()
+        return FormattedSegments(self.__segments, arguments.json).format()
 
     def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
-        parser.add_argument("-f", "--full", action="store_true", default=False)
+        parser.add_argument("-j", "--json", action="store_true", default=False)
         parser.add_argument(
             "-v", "--validate", action="store_true", default=False
         )
@@ -263,17 +263,18 @@ class DynamicCommand(Command):
     def name(self) -> str:
         return self.__NAME
 
-    def execute(self, raw_arguments: list[str]) -> None:
+    def output(self, raw_arguments: list[str]) -> str:
         arguments = self.__arguments(self.__NAME, raw_arguments)
         dynamic = RawDynamic(
             self.__segments.occurrence(ProgramHeader.PT_DYNAMIC)
         )
         if arguments.validate:
             ValidatedDynamic(dynamic).validate()
-        PrintableDynamic(dynamic).print()
+        return FormattedDynamic(dynamic, arguments.json).format()
 
     def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument("-j", "--json", action="store_true", default=False)
         parser.add_argument(
             "-v", "--validate", action="store_true", default=False
         )

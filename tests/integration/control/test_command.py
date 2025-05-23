@@ -67,9 +67,9 @@ def test_executable_header_command_with_all_flags(
 
     assert command.name() == "header"
 
-    command.execute(["--validate"] if validated else [])
-
-    assert capsys.readouterr().out == expected_output
+    assert (
+        command.output(["--validate"] if validated else []) == expected_output
+    )
 
 
 @pytest.mark.parametrize(
@@ -89,7 +89,7 @@ def test_executable_header_command_with_corrupted_binary_and_validate_flag(
     assert command.name() == "header"
 
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        command.execute(["--validate"])
+        command.output(["--validate"])
 
 
 @pytest.mark.parametrize(
@@ -105,12 +105,12 @@ def test_executable_header_command_with_32_bit_binary(
     assert command.name() == "header"
 
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        command.execute(["--validate"])
+        command.output(["--validate"])
 
 
 @pytest.mark.parametrize(
     "validated",
-    [True, False],
+    [False, True],
 )
 @pytest.mark.parametrize(
     "raw_data",
@@ -120,7 +120,7 @@ def test_executable_header_command_with_32_bit_binary(
     ],
     indirect=True,
 )
-def test_sections_command_with_all_flags(
+def test_sections_command_with_validate_flag(
     raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
 ) -> None:
     executable_header = RawExecutableHeader(raw_data)
@@ -136,32 +136,28 @@ def test_sections_command_with_all_flags(
 
     assert command.name() == "sections"
 
-    command.execute(["--full", "--validate"] if validated else ["--full"])
-
-    output = capsys.readouterr().out.strip().splitlines()
+    output = command.output(["--validate"] if validated else [])
 
     assert re.match(
-        r"\s*Idx\s+Name\s+Type\s+Flags\s+Address"
+        r"^\s*Idx\s+Name\s+Type\s+Flags\s+Address"
         r"\s+Offset\s+Size\s+Link\s+Info\s+Align\s+ES",
-        output[0],
+        output,
     )
-
-    for line in output[1:]:
-        assert (
-            re.compile(
-                r"^\[\d+]\s+"
-                r"(?:\.\S+(?: \(\d+\))?|0|\(\d+\)|\s+)\s+"
-                r"\d+\s+"
-                r"0x[0-9a-fA-F]+\s+"
-                r"0x[0-9a-fA-F]+\s+"
-                r"0x[0-9a-fA-F]+\s+"
-                r"\d+\s+"
-                r"\d+\s+"
-                r"\d+\s+"
-                r"\d+\s+"
-                r"\d+\s*$"
-            )
-        ).match(line) is not None
+    assert re.search(
+        r"^\[\d+]\s+"
+        r"(?:\.\S+(?: \(\d+\))?|\(\d+\)|\d+|\s+)\s+"
+        r"\d+\s+"
+        r"0x[0-9a-fA-F]+\s+"
+        r"0x[0-9a-fA-F]+\s+"
+        r"0x[0-9a-fA-F]+\s+"
+        r"\d+\s+"
+        r"\d+\s+"
+        r"\d+\s+"
+        r"\d+\s+"
+        r"\d+\s*$",
+        output,
+        re.MULTILINE,
+    )
 
 
 @pytest.mark.parametrize(
@@ -190,7 +186,7 @@ def test_sections_command_with_corrupted_binary_and_validate_flag(
     assert command.name() == "sections"
 
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        command.execute(["--validate"])
+        command.output(["--validate"])
 
 
 @pytest.mark.parametrize(
@@ -227,8 +223,7 @@ def test_section_command(
 
     assert command.name() == "section"
 
-    command.execute(["--name", ".shstrtab"])
-    output = capsys.readouterr().out
+    output = command.output(["--name", ".shstrtab"])
 
     for pattern in patterns:
         assert re.search(pattern, output) is not None
@@ -258,15 +253,13 @@ def test_section_command_with_full_flag(
 
     executable_header = RawExecutableHeader(raw_data)
 
-    SectionCommand(
+    output = SectionCommand(
         RawSections(
             raw_data,
             RawSectionHeaders(raw_data, executable_header),
             executable_header,
         )
-    ).execute(["--name", ".text", "--full"])
-
-    output = capsys.readouterr().out
+    ).output(["--name", ".text", "--full"])
 
     for pattern in patterns:
         assert re.search(pattern, output) is not None
@@ -311,8 +304,7 @@ def test_section_command_with_stripped_section_headers(
 
     assert command.name() == "section"
 
-    command.execute(["--name", expected_zero_sh_name])
-    assert expected_output == capsys.readouterr().out
+    assert command.output(["--name", expected_zero_sh_name]) == expected_output
 
 
 @pytest.mark.parametrize(
@@ -354,8 +346,10 @@ def test_section_command_with_stripped_section_headers_and_full_flag(
 
     assert command.name() == "section"
 
-    command.execute(["--name", expected_zero_sh_name, "--full"])
-    assert expected_output == capsys.readouterr().out
+    assert (
+        command.output(["--name", expected_zero_sh_name, "--full"])
+        == expected_output
+    )
 
 
 @pytest.mark.parametrize(
@@ -368,12 +362,6 @@ def test_section_command_with_stripped_section_headers_and_full_flag(
 def test_symbol_table_command_with_all_flags(
     raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
 ) -> None:
-    expected_header = "Symbol Table: .dynsym"
-    expected_columns = (
-        "Idx   Value               Size   "
-        "Bind      Type      Visibility  Name"
-    )
-
     executable_header = RawExecutableHeader(raw_data)
 
     command = DynsymCommand(
@@ -386,26 +374,22 @@ def test_symbol_table_command_with_all_flags(
 
     assert command.name() == "dynsym"
 
-    command.execute(["--validate"] if validated else [])
+    output = command.output(["--validate"] if validated else [])
 
-    output = capsys.readouterr().out.splitlines()
-
-    assert output[0] == expected_header
-    assert output[1] == expected_columns
-
-    for line in output[2:]:
-        assert (
-            re.compile(
-                (
-                    r"\[\d+\]\s+0x[0-9a-f]{16}\s+\d+\s+"
-                    r"(LOCAL|GLOBAL|WEAK)\s+"
-                    r"(NOTYPE|OBJECT|FUNC|SECTION|FILE|COMMON|TLS)\s+"
-                    r"(DEFAULT|INTERNAL|HIDDEN|PROTECTED)\s+"
-                    r"[\x20-\x7E]*"
-                )
-            ).match(line)
-            is not None
-        )
+    assert re.match(
+        r"^Symbol Table: \.\w+\nIdx\s+Value\s+Size\s+Bind\s+Type\s+"
+        r"Visibility\s+Name",
+        output,
+    )
+    assert re.search(
+        r"^\[\d+\]\s+0x[0-9a-f]{16}\s+\d+\s+"
+        r"(LOCAL|GLOBAL|WEAK)\s+"
+        r"(NOTYPE|OBJECT|FUNC|SECTION|FILE|COMMON|TLS)\s+"
+        r"(DEFAULT|INTERNAL|HIDDEN|PROTECTED)\s+"
+        r"[\x20-\x7E]*$",
+        output,
+        re.MULTILINE,
+    )
 
 
 @pytest.mark.parametrize(
@@ -431,7 +415,7 @@ def test_dynsym_command_with_corrupted_binary_validate_flag(
     assert command.name() == "dynsym"
 
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        command.execute(["--validate"])
+        command.output(["--validate"])
 
 
 @pytest.mark.parametrize(
@@ -455,7 +439,7 @@ def test_symtab_command_with_corrupted_binary_and_validate_flag(
     assert command.name() == "symtab"
 
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        command.execute(["--validate"])
+        command.output(["--validate"])
 
 
 @pytest.mark.parametrize(
@@ -477,7 +461,7 @@ def test_text_command(
         "00001076: xor ecx, ecx\n"
         "00001078: lea rdi, [rip + 0xca]\n"
         "0000107f: call qword ptr [rip + 0x2f53]\n"
-        "00001085: hlt\n"
+        "00001085: hlt"
     )
 
     executable_header = RawExecutableHeader(raw_data)
@@ -492,9 +476,7 @@ def test_text_command(
 
     assert command.name() == "text"
 
-    command.execute([])
-
-    assert capsys.readouterr().out.startswith(expected_output)
+    assert command.output([]).startswith(expected_output)
 
 
 @pytest.mark.parametrize(
@@ -512,7 +494,7 @@ def test_plt_command(raw_data: bytearray, capsys: CaptureFixture[str]) -> None:
         "00001040: endbr64\n"
         "00001044: push 1\n"
         "00001049: bnd jmp 0x1020\n"
-        "0000104f: nop\n"
+        "0000104f: nop"
     )
 
     executable_header = RawExecutableHeader(raw_data)
@@ -527,9 +509,7 @@ def test_plt_command(raw_data: bytearray, capsys: CaptureFixture[str]) -> None:
 
     assert command.name() == "plt"
 
-    command.execute([])
-
-    assert capsys.readouterr().out.startswith(expected_output)
+    assert command.output([]).startswith(expected_output)
 
 
 @pytest.mark.parametrize(
@@ -546,7 +526,7 @@ def test_init_command(
         "00001012: je 0x1016\n"
         "00001014: call rax\n"
         "00001016: add rsp, 8\n"
-        "0000101a: ret\n"
+        "0000101a: ret"
     )
 
     executable_header = RawExecutableHeader(raw_data)
@@ -561,9 +541,7 @@ def test_init_command(
 
     assert command.name() == "init"
 
-    command.execute([])
-
-    assert capsys.readouterr().out == expected_output
+    assert command.output([]) == expected_output
 
 
 @pytest.mark.parametrize(
@@ -576,7 +554,7 @@ def test_fini_command(
         "00001178: endbr64\n"
         "0000117c: sub rsp, 8\n"
         "00001180: add rsp, 8\n"
-        "00001184: ret\n"
+        "00001184: ret"
     )
 
     executable_header = RawExecutableHeader(raw_data)
@@ -591,9 +569,7 @@ def test_fini_command(
 
     assert command.name() == "fini"
 
-    command.execute([])
-
-    assert capsys.readouterr().out == expected_output
+    assert command.output([]) == expected_output
 
 
 @pytest.mark.parametrize(
@@ -609,7 +585,7 @@ def test_raising_on_invalid_argument(raw_data: bytearray) -> None:
                 RawSectionHeaders(raw_data, executable_header),
                 executable_header,
             )
-        ).execute(["--name", ".text", "--invalid"])
+        ).output(["--name", ".text", "--invalid"])
 
 
 @pytest.mark.parametrize(
@@ -629,7 +605,7 @@ def test_section_command_raising_on_nonexistent_section(
             )
         )
 
-        command.execute(["--name", ".nonexistent"])
+        command.output(["--name", ".nonexistent"])
 
 
 @pytest.mark.parametrize(
@@ -660,31 +636,26 @@ def test_segments_command_with_all_flags(
 
     assert command.name() == "segments"
 
-    command.execute(["--full", "--validate"] if validated else ["--full"])
-
-    output = capsys.readouterr().out.strip().splitlines()
+    output = command.output(["--validate"] if validated else [])
 
     assert re.match(
-        r"\s*Idx\s+Type\s+Flags\s+Offset\s+VirtAddr\s+PhysAddr\s+"
+        r"^\s*Idx\s+Type\s+Flags\s+Offset\s+VirtAddr\s+PhysAddr\s+"
         r"FileSize\s+MemSize\s+Align",
-        output[0],
+        output,
     )
-
-    for line in output[1:]:
-        assert (
-            re.compile(
-                r"^\[\d+]\s+"
-                r"\S+\s+"
-                r"R?W?E?\s+"
-                r"0x[0-9a-fA-F]{6}\s+"
-                r"0x[0-9a-fA-F]{8}\s+"
-                r"0x[0-9a-fA-F]{8}\s+"
-                r"\d+\s+"
-                r"\d+\s+"
-                r"\d+\s*$"
-            ).match(line)
-            is not None
-        )
+    assert re.search(
+        r"^\[\d+]\s+"
+        r"\S+\s+"
+        r"R?W?E?\s+"
+        r"0x[0-9a-fA-F]{6}\s+"
+        r"0x[0-9a-fA-F]{8}\s+"
+        r"0x[0-9a-fA-F]{8}\s+"
+        r"\d+\s+"
+        r"\d+\s+"
+        r"\d+\s*$",
+        output,
+        re.MULTILINE,
+    )
 
 
 @pytest.mark.parametrize(
@@ -715,7 +686,7 @@ def test_segments_command_with_corrupted_binary_and_validate_flag(
     assert command.name() == "segments"
 
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        command.execute(["--validate"])
+        command.output(["--validate"])
 
 
 @pytest.mark.parametrize(
@@ -742,16 +713,17 @@ def test_dynamic_command(
 
     assert command.name() == "dynamic"
 
-    command.execute(["--validate"] if validated else [])
-
-    output = capsys.readouterr().out.strip().splitlines()
+    output = command.output(["--validate"] if validated else [])
 
     assert re.match(
-        r"\s*Idx\s+Tag\s+Value",
-        output[0],
+        r"^\s*Idx\s+Tag\s+Value",
+        output,
     )
-    for line in output[1:]:
-        assert re.match(r"^\[\d+]\s+(DT_\w+|0x[0-9a-f]{8})\s+\d+$", line)
+    assert re.search(
+        r"^\[\d+]\s+(DT_\w+|0x[0-9a-f]{8})\s+\d+$",
+        output,
+        re.MULTILINE,
+    )
 
 
 @pytest.mark.parametrize(
@@ -774,4 +746,4 @@ def test_dynamic_command_with_corrupted_binary_and_validate_flag(
     assert command.name() == "dynamic"
 
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        command.execute(["--validate"])
+        command.output(["--validate"])

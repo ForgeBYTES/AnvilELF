@@ -42,7 +42,7 @@ class InteractiveCommandLine(CommandLine):
             case _:
                 for command in self.__commands:
                     if command_name == command.name():
-                        command.execute(arguments)
+                        print(command.output(arguments))
                         return
                 print(
                     f"Unknown command '{command_name}'",

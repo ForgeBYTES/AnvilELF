@@ -43,11 +43,11 @@ anvil> header
 
 # List all sections
 anvil> sections
-anvil> sections --full --validate
+anvil> sections --validate
 
 # List all segments
 anvil> segments
-anvil> segments --full --validate
+anvil> segments --validate
 
 # Show PT_DYNAMIC segment
 anvil> dynamic

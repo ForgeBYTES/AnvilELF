@@ -16,9 +16,9 @@ Forge your binary 🔥
 
 hint = """
 header [--validate]            Show executable header
-sections [--full, --validate]  List all sections
+sections [--validate]          List all sections
 section -n NAME [-full]        Show section by name
-segments [--full, --validate]  List all segments
+segments [--validate]          List all segments
 dynamic [--validate]           Show PT_DYNAMIC segment
 text [--offset N] [--size N]   Disassemble .text section
 plt                            Disassemble .plt section

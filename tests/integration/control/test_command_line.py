@@ -14,15 +14,15 @@ class ValidCommand(Command):
     def name(self) -> str:
         return "valid"
 
-    def execute(self, args: list[str]) -> None:
-        print("I am executed!")
+    def output(self, raw_arguments: list[str], in_json: bool = False) -> str:
+        return "I am executed!"
 
 
 class FailingCommand(Command):
     def name(self) -> str:
         return "failing"
 
-    def execute(self, args: list[str]) -> None:
+    def output(self, raw_arguments: list[str], in_json: bool = False) -> str:
         raise ValueError("I am failing!")
 
 

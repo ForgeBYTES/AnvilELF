@@ -16,13 +16,13 @@ from src.elf.section import (
 from src.elf.section_header import RawSectionHeaders
 from src.elf.segment import RawDynamic, RawSegments
 from src.view.view import (
-    PrintableDisassembly,
-    PrintableDynamic,
-    PrintableExecutableHeader,
-    PrintableSection,
-    PrintableSections,
-    PrintableSegments,
-    PrintableSymbolTable,
+    FormattedDisassembly,
+    FormattedDynamic,
+    FormattedExecutableHeader,
+    FormattedSection,
+    FormattedSections,
+    FormattedSegments,
+    FormattedSymbolTable,
 )
 
 
@@ -35,7 +35,7 @@ def raw_data(request: FixtureRequest) -> bytearray:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_printing_executable_header(
+def test_formatting_executable_header(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     expected_output = (
@@ -61,15 +61,59 @@ def test_printing_executable_header(
         "  Section header string table index: 38\n"
     )
 
-    PrintableExecutableHeader(RawExecutableHeader(raw_data)).print()
+    assert (
+        FormattedExecutableHeader(RawExecutableHeader(raw_data)).format()
+        == expected_output
+    )
 
-    assert capsys.readouterr().out == expected_output
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
+)
+def test_formatting_executable_header_as_json(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    expected_output = (
+        "{\n"
+        '  "executable_header": {\n'
+        '    "e_ident": {\n'
+        '      "EI_MAG": "7f 45 4c 46",\n'
+        '      "EI_CLASS": 2,\n'
+        '      "EI_DATA": 1,\n'
+        '      "EI_VERSION": 1,\n'
+        '      "EI_OSABI": 0,\n'
+        '      "EI_ABIVERSION": 0,\n'
+        '      "EI_PAD": "00 00 00 00 00 00 00"\n'
+        "    },\n"
+        '    "e_type": 3,\n'
+        '    "e_machine": 62,\n'
+        '    "e_version": 1,\n'
+        '    "e_entry": 4704,\n'
+        '    "e_phoff": 64,\n'
+        '    "e_shoff": 19232,\n'
+        '    "e_flags": 0,\n'
+        '    "e_ehsize": 64,\n'
+        '    "e_phentsize": 56,\n'
+        '    "e_phnum": 13,\n'
+        '    "e_shentsize": 64,\n'
+        '    "e_shnum": 39,\n'
+        '    "e_shstrndx": 38\n'
+        "  }\n"
+        "}"
+    )
+
+    assert (
+        FormattedExecutableHeader(
+            RawExecutableHeader(raw_data), as_json=True
+        ).format()
+        == expected_output
+    )
 
 
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_printing_section(
+def test_formatting_section(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     expected_output = (
@@ -93,22 +137,65 @@ def test_printing_section(
 
     executable_header = RawExecutableHeader(raw_data)
 
-    PrintableSection(
-        RawSection(
-            raw_data,
-            RawSectionHeaders(raw_data, executable_header).all()[
-                executable_header.fields()["e_shstrndx"]
-            ],
-        )
-    ).print()
-
-    assert capsys.readouterr().out == expected_output
+    assert (
+        FormattedSection(
+            RawSection(
+                raw_data,
+                RawSectionHeaders(raw_data, executable_header).all()[
+                    executable_header.fields()["e_shstrndx"]
+                ],
+            )
+        ).format()
+        == expected_output
+    )
 
 
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_printing_full_section(
+def test_formatting_section_as_json(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    expected_output = (
+        "{\n"
+        '  "section_header": {\n'
+        '    "sh_name": 17,\n'
+        '    "sh_type": 3,\n'
+        '    "sh_flags": 0,\n'
+        '    "sh_addr": 0,\n'
+        '    "sh_offset": 13695,\n'
+        '    "sh_size": 282,\n'
+        '    "sh_link": 0,\n'
+        '    "sh_info": 0,\n'
+        '    "sh_addralign": 1,\n'
+        '    "sh_entsize": 0\n'
+        "  },\n"
+        '  "name": "17",\n'
+        '  "data": "00 2e 73 79 6d 74 61 62 00 2e 73 74 72 74 61 62 00 2e 73 '
+        '68 73 74 72 74 61 62 00 2e 69 6e 74 65"\n'
+        "}"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+
+    assert (
+        FormattedSection(
+            RawSection(
+                raw_data,
+                RawSectionHeaders(raw_data, executable_header).all()[
+                    executable_header.fields()["e_shstrndx"]
+                ],
+            ),
+            as_json=True,
+        ).format()
+        == expected_output
+    )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_formatting_full_section(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     patterns = [
@@ -129,58 +216,28 @@ def test_printing_full_section(
 
     executable_header = RawExecutableHeader(raw_data)
 
-    PrintableSection(
-        RawSection(
-            raw_data,
-            RawSectionHeaders(raw_data, executable_header).all()[
-                executable_header.fields()["e_shstrndx"]
-            ],
-        ),
-        full=True,
-    ).print()
-
-    output = capsys.readouterr().out
-
     for pattern in patterns:
-        assert re.search(pattern, output) is not None
-
-
-@pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
-)
-def test_printing_sections(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
-    # fmt: off
-    expected_output = (
-        " [0] \n [1] .interp\n [2] .note.gnu.property\n"
-        " [3] .note.gnu.build-id\n [4] .note.ABI-tag\n [5] .gnu.hash\n"
-        " [6] .dynsym\n [7] .dynstr\n [8] .gnu.version\n [9] .gnu.version_r\n"
-        "[10] .rela.dyn\n[11] .rela.plt\n[12] .init\n[13] .plt\n"
-        "[14] .plt.got\n[15] .plt.sec\n[16] .text\n[17] .fini\n[18] .rodata\n"
-        "[19] .eh_frame_hdr\n[20] .eh_frame\n[21] .init_array\n"
-        "[22] .fini_array\n[23] .dynamic\n[24] .got\n[25] .data\n[26] .bss\n"
-        "[27] .comment\n[28] .shstrtab\n"
-    )
-    # fmt: on
-
-    executable_header = RawExecutableHeader(raw_data)
-
-    PrintableSections(
-        RawSections(
-            raw_data,
-            RawSectionHeaders(raw_data, executable_header),
-            executable_header,
+        assert (
+            re.search(
+                pattern,
+                FormattedSection(
+                    RawSection(
+                        raw_data,
+                        RawSectionHeaders(raw_data, executable_header).all()[
+                            executable_header.fields()["e_shstrndx"]
+                        ],
+                    ),
+                    full=True,
+                ).format(),
+            )
+            is not None
         )
-    ).print()
-
-    assert capsys.readouterr().out == expected_output
 
 
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_printing_full_sections(
+def test_formatting_sections(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     executable_header = RawExecutableHeader(raw_data)
@@ -190,48 +247,109 @@ def test_printing_full_sections(
         executable_header,
     )
 
-    PrintableSections(sections, full=True).print()
-
-    output = capsys.readouterr().out.strip().splitlines()
+    _format = FormattedSections(sections).format()
 
     assert re.match(
-        r"\s*Idx\s+Name\s+Type\s+Flags\s+Address"
+        r"^\s*Idx\s+Name\s+Type\s+Flags\s+Address"
         r"\s+Offset\s+Size\s+Link\s+Info\s+Align\s+ES",
-        output[0],
+        _format,
+    )
+    assert re.search(
+        r"^\[\d+]\s+"
+        r"(?:\.\S+(?: \(\d+\))?|\(\d+\)|\s+)\s+"
+        r"\d+\s+"
+        r"0x[0-9a-fA-F]+\s+"
+        r"0x[0-9a-fA-F]+\s+"
+        r"0x[0-9a-fA-F]+\s+"
+        r"\d+\s+"
+        r"\d+\s+"
+        r"\d+\s+"
+        r"\d+\s+"
+        r"\d+\s*$",
+        _format,
+        re.MULTILINE,
     )
 
-    for line in output[1:]:
-        assert (
-            re.compile(
-                (
-                    r"^\[\d+]\s+"
-                    r"(?:\.\S+(?: \(\d+\))?|\(\d+\)|\s+)\s+"
-                    r"\d+\s+"
-                    r"0x[0-9a-fA-F]+\s+"
-                    r"0x[0-9a-fA-F]+\s+"
-                    r"0x[0-9a-fA-F]+\s+"
-                    r"\d+\s+"
-                    r"\d+\s+"
-                    r"\d+\s+"
-                    r"\d+\s+"
-                    r"\d+\s*$"
-                )
-            ).match(line)
-            is not None
-        )
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+)
+def test_formatting_sections_as_json(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    patterns = [
+        r'"sections"\s*:\s*\[',
+        r'"name"\s*:\s*"\.[a-zA-Z0-9_.]+"',
+        r'"sh_name"\s*:\s*\d+',
+        r'"sh_offset"\s*:\s*\d+',
+    ]
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    _format = FormattedSections(sections, as_json=True).format()
+
+    for pattern in patterns:
+        assert re.search(pattern, _format)
 
 
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_printing_symbol_table(
+def test_formatting_symbol_table(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
-    expected_header = "Symbol Table: .dynsym"
-    expected_columns = (
-        "Idx   Value               Size   "
-        "Bind      Type      Visibility  Name"
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
     )
+
+    _format = FormattedSymbolTable(
+        RawSymbolTable(
+            sections.find(".dynsym"),
+            RawStringTable(sections.find(".dynstr")),
+        ),
+        ".dynsym",
+    ).format()
+
+    assert re.match(
+        r"^Symbol Table: \.\w+\nIdx\s+Value\s+Size\s+Bind\s+Type\s+"
+        r"Visibility\s+Name",
+        _format,
+    )
+    assert re.search(
+        r"^\[\d+\]\s+0x[0-9a-f]{16}\s+\d+\s+"
+        r"(LOCAL|GLOBAL|WEAK)\s+"
+        r"(NOTYPE|OBJECT|FUNC|SECTION|FILE|COMMON|TLS)\s+"
+        r"(DEFAULT|INTERNAL|HIDDEN|PROTECTED)\s+"
+        r"[\x20-\x7E]*$",
+        _format,
+        re.MULTILINE,
+    )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
+)
+def test_formatting_symbol_table_as_json(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    patterns = [
+        r'"symbol_table"\s*:\s*"\.dynsym"',
+        r'"name"\s*:\s*"[a-zA-Z0-9_]+"',
+        r'"bind"\s*:\s*"(LOCAL|GLOBAL|WEAK)"',
+        r'"type"\s*:\s*"(FUNC|OBJECT|NOTYPE)"',
+        r'"visibility"\s*:\s*"(DEFAULT|HIDDEN|PROTECTED)"',
+        r'"st_name"\s*:\s*\d+',
+        r'"st_info"\s*:\s*\d+',
+        r'"st_shndx"\s*:\s*\d+',
+    ]
 
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(
@@ -240,38 +358,23 @@ def test_printing_symbol_table(
         executable_header,
     )
 
-    PrintableSymbolTable(
+    _format = FormattedSymbolTable(
         RawSymbolTable(
             sections.find(".dynsym"),
             RawStringTable(sections.find(".dynstr")),
         ),
         ".dynsym",
-    ).print()
+        as_json=True,
+    ).format()
 
-    output = capsys.readouterr().out.splitlines()
-
-    assert output[0] == expected_header
-    assert output[1] == expected_columns
-
-    for line in output[2:]:
-        assert (
-            re.compile(
-                (
-                    r"\[\d+\]\s+0x[0-9a-f]{16}\s+\d+\s+"
-                    r"(LOCAL|GLOBAL|WEAK)\s+"
-                    r"(NOTYPE|OBJECT|FUNC|SECTION|FILE|COMMON|TLS)\s+"
-                    r"(DEFAULT|INTERNAL|HIDDEN|PROTECTED)\s+"
-                    r"[\x20-\x7E]*"
-                )
-            ).match(line)
-            is not None
-        )
+    for pattern in patterns:
+        assert re.search(pattern, _format), f"Missing pattern: {pattern}"
 
 
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_printing_disassembly(
+def test_formatting_disassembly(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     expected_output = (
@@ -297,51 +400,48 @@ def test_printing_disassembly(
         executable_header,
     )
 
-    PrintableDisassembly(
-        RawDisassembly(sections.find(".text")),
-    ).print()
-
-    assert capsys.readouterr().out.startswith(expected_output)
-
-
-@pytest.mark.parametrize(
-    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
-)
-def test_printing_segments(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
-    executable_header = RawExecutableHeader(raw_data)
-    segments = RawSegments(
-        raw_data,
-        RawProgramHeaders(raw_data, executable_header),
-    )
-
-    PrintableSegments(segments).print()
-
-    output = capsys.readouterr().out.strip().splitlines()
-
-    assert re.match(
-        r"\s*Idx\s+Type\s+Flags\s+Offset\s+FileSize",
-        output[0],
-    )
-
-    for line in output[1:]:
-        assert (
-            re.compile(
-                r"^\[\d+]\s+"
-                r"\S+\s+"
-                r"R?W?E?\s+"
-                r"0x[0-9a-fA-F]{6}\s+"
-                r"\d+\s*$"
-            ).match(line)
-            is not None
+    assert (
+        FormattedDisassembly(
+            RawDisassembly(sections.find(".text")),
         )
+        .format()
+        .startswith(expected_output)
+    )
 
 
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_printing_full_segments(
+def test_formatting_disassembly_as_json(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    patterns = [
+        r'"offset"\s*:\s*\d+',
+        r'"size"\s*:\s*\d+',
+        r'"instructions"\s*:\s*\[',
+        r'"0*[0-9a-f]{4,}:\s+[a-z]+.*?"',
+    ]
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    _format = FormattedDisassembly(
+        RawDisassembly(sections.find(".text")),
+        as_json=True,
+    ).format()
+
+    for pattern in patterns:
+        assert re.search(pattern, _format)
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_formatting_segments(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     executable_header = RawExecutableHeader(raw_data)
@@ -350,37 +450,60 @@ def test_printing_full_segments(
         RawProgramHeaders(raw_data, executable_header),
     )
 
-    PrintableSegments(segments, full=True).print()
-
-    output = capsys.readouterr().out.strip().splitlines()
+    _format = FormattedSegments(segments).format()
 
     assert re.match(
-        r"\s*Idx\s+Type\s+Flags\s+Offset\s+VirtAddr\s+PhysAddr\s+"
+        r"^\s*Idx\s+Type\s+Flags\s+Offset\s+VirtAddr\s+PhysAddr\s+"
         r"FileSize\s+MemSize\s+Align",
-        output[0],
+        _format,
+    )
+    assert re.search(
+        r"^\[\d+]\s+"
+        r"\S+\s+"
+        r"R?W?E?\s+"
+        r"0x[0-9a-fA-F]{6}\s+"
+        r"0x[0-9a-fA-F]{8}\s+"
+        r"0x[0-9a-fA-F]{8}\s+"
+        r"\d+\s+"
+        r"\d+\s+"
+        r"\d+\s*$",
+        _format,
+        re.MULTILINE,
     )
 
-    for line in output[1:]:
-        assert (
-            re.compile(
-                r"^\[\d+]\s+"
-                r"\S+\s+"
-                r"R?W?E?\s+"
-                r"0x[0-9a-fA-F]{6}\s+"
-                r"0x[0-9a-fA-F]{8}\s+"
-                r"0x[0-9a-fA-F]{8}\s+"
-                r"\d+\s+"
-                r"\d+\s+"
-                r"\d+\s*$"
-            ).match(line)
-            is not None
-        )
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_formatting_segments_as_json(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    patterns = [
+        r'"segments"\s*:\s*\[',
+        r'"program_header"\s*:\s*\{',
+        r'"p_type"\s*:\s*\d+',
+        r'"p_offset"\s*:\s*\d+',
+        r'"p_filesz"\s*:\s*\d+',
+        r'"type"\s*:\s*"[A-Z_]+"',
+        r'"flags"\s*:\s*"[RWX]+"',
+    ]
+
+    executable_header = RawExecutableHeader(raw_data)
+    segments = RawSegments(
+        raw_data,
+        RawProgramHeaders(raw_data, executable_header),
+    )
+
+    _format = FormattedSegments(segments, as_json=True).format()
+
+    for pattern in patterns:
+        assert re.search(pattern, _format)
 
 
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_printing_dynamic_entries(
+def test_formatting_dynamic_entries(
     raw_data: bytearray, capsys: CaptureFixture[str]
 ) -> None:
     segments = RawSegments(
@@ -388,13 +511,41 @@ def test_printing_dynamic_entries(
     )
     for segment in segments.all():
         if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
-            PrintableDynamic(RawDynamic(segment)).print()
+            _format = FormattedDynamic(RawDynamic(segment)).format()
 
-    output = capsys.readouterr().out.strip().splitlines()
+            assert re.match(
+                r"^\s*Idx\s+Tag\s+Value",
+                _format,
+            )
+            assert re.search(
+                r"^\[\d+]\s+(DT_\w+|0x[0-9a-f]{8})\s+\d+$",
+                _format,
+                re.MULTILINE,
+            )
 
-    assert re.match(
-        r"\s*Idx\s+Tag\s+Value",
-        output[0],
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
+)
+def test_formatting_dynamic_entries_as_json(
+    raw_data: bytearray, capsys: CaptureFixture[str]
+) -> None:
+    patterns = [
+        r'"dynamic"\s*:\s*\[',
+        r'"tag"\s*:\s*"(DT_[A-Z_]+|0x[0-9a-f]+)"',
+        r'"fields"\s*:\s*\{',
+        r'"d_tag"\s*:\s*\d+',
+        r'"d_un"\s*:\s*\d+',
+    ]
+
+    segments = RawSegments(
+        raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
     )
-    for line in output[1:]:
-        assert re.match(r"^\[\d+]\s+(DT_\w+|0x[0-9a-f]{8})\s+\d+$", line)
+    for segment in segments.all():
+        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+            _format = FormattedDynamic(
+                RawDynamic(segment), as_json=True
+            ).format()
+
+            for pattern in patterns:
+                assert re.search(pattern, _format)

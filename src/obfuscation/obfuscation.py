@@ -17,7 +17,6 @@ class Obfuscated(ABC):
 class HeaderlessBinary(Binary, Obfuscated):
     def __init__(self, origin: Binary):
         self.__origin = origin
-        self.__stripped = False
 
     def components(
         self,

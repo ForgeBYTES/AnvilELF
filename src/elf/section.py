@@ -44,7 +44,7 @@ class StringTable(ABC):
 
 class Disassembly(ABC):
     @abstractmethod
-    def instructions(self) -> list[str]:
+    def instructions(self, offset: int = 0, size: int = 0) -> list[str]:
         pass  # pragma: no cover
 
 
@@ -373,11 +373,11 @@ class RawDisassembly(Disassembly):
     def __init__(self, section: Section):
         self.__section = section
         self.__cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
+        self.__cs.syntax = capstone.CS_OPT_SYNTAX_INTEL
 
-    def instructions(self) -> list[str]:
+    def instructions(self, offset: int = 0, size: int = 0) -> list[str]:
         header = self.__section.header()
         if self.__is_executable(header):
-            self.__cs.syntax = capstone.CS_OPT_SYNTAX_INTEL
             return [
                 self.__instruction(
                     instruction.address,
@@ -385,14 +385,29 @@ class RawDisassembly(Disassembly):
                     instruction.op_str,
                 )
                 for instruction in self.__cs.disasm(
-                    self.__section.raw_data(),
-                    header["sh_addr"],
+                    self.__data(
+                        self.__section.raw_data().tobytes(), offset, size
+                    ),
+                    header["sh_addr"] + offset,
                 )
             ]
         raise ValueError("Section is not executable")
 
+    def __data(self, data: bytes, offset: int, size: int) -> bytes:
+        if not self.__is_exceeded(data, offset, size):
+            return data[offset : offset + size] if size else data[offset:]
+        raise ValueError("Disassembly range exceeded")
+
     def __is_executable(self, header: dict[str, int]) -> bool:
         return bool(header["sh_flags"] & self.__SHF_EXECINSTR)
 
-    def __instruction(self, address: str, mnemonic: str, op: str) -> str:
+    def __instruction(self, address: int, mnemonic: str, op: str) -> str:
         return f"{address:08x}: {mnemonic} {op}".rstrip()
+
+    def __is_exceeded(self, data: bytes, offset: int, size: int) -> bool:
+        return (
+            offset < 0
+            or offset > len(data)
+            or size < 0
+            or offset + size > len(data)
+        )

@@ -561,3 +561,18 @@ def test_returning_offset_from_string_table_on_exceeding_range(
     assert RawStringTable(shstrtab).name_by_offset(maximum_offset) == str(
         maximum_offset
     )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_exceeded_disassembly_range(raw_data: bytearray) -> None:
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    with pytest.raises(ValueError, match="Disassembly range exceeded"):
+        assert RawDisassembly(sections.find(".text")).instructions(0, -1)

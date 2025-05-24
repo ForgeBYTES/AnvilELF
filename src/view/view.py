@@ -15,13 +15,13 @@ class Formattable(ABC):
 
 class FormattedExecutableHeader(Formattable):
     def __init__(
-        self, executable_header: ExecutableHeader, to_json: bool = False
+        self, executable_header: ExecutableHeader, as_json: bool = False
     ):
         self.__executable_header = executable_header
-        self.__to_json = to_json
+        self.__as_json = as_json
 
     def format(self) -> str:
-        if self.__to_json:
+        if self.__as_json:
             return self.__json(self.__executable_header)
         else:
             return self.__text(self.__executable_header)
@@ -31,7 +31,7 @@ class FormattedExecutableHeader(Formattable):
         e_ident = fields["e_ident"]
         return (
             "Executable Header:\n"
-            f"  Magic: {self.__magic(e_ident['EI_MAG'])}\n"
+            f"  Magic: {self.__hex(e_ident['EI_MAG'])}\n"
             f"  Class: {e_ident['EI_CLASS']}\n"
             f"  Data: {e_ident['EI_DATA']}\n"
             f"  Version: {e_ident['EI_VERSION']}\n"
@@ -53,24 +53,25 @@ class FormattedExecutableHeader(Formattable):
         )
 
     def __json(self, executable_header: ExecutableHeader) -> str:
-        return json.dumps(
-            {"executable_header": executable_header.fields()}, indent=2
-        )
+        fields = executable_header.fields()
+        fields["e_ident"]["EI_MAG"] = self.__hex(fields["e_ident"]["EI_MAG"])
+        fields["e_ident"]["EI_PAD"] = self.__hex(fields["e_ident"]["EI_PAD"])
+        return json.dumps({"executable_header": fields}, indent=2)
 
-    def __magic(self, ei_mag: bytes) -> str:
-        return " ".join(f"{byte:02x}" for byte in ei_mag)
+    def __hex(self, value: bytes) -> str:
+        return " ".join(f"{byte:02x}" for byte in value)
 
 
 class FormattedSection(Formattable):
     def __init__(
-        self, section: Section, full: bool = False, to_json: bool = False
+        self, section: Section, full: bool = False, as_json: bool = False
     ):
         self.__section = section
         self.__full = full
-        self.__to_json = to_json
+        self.__as_json = as_json
 
     def format(self) -> str:
-        if self.__to_json:
+        if self.__as_json:
             return self.__json(self.__section, self.__full)
         else:
             return self.__text(self.__section, self.__full)
@@ -126,12 +127,12 @@ class FormattedSection(Formattable):
 
 
 class FormattedSections(Formattable):
-    def __init__(self, sections: Sections, to_json: bool = False):
+    def __init__(self, sections: Sections, as_json: bool = False):
         self.__sections = sections
-        self.__to_json = to_json
+        self.__as_json = as_json
 
     def format(self) -> str:
-        if self.__to_json:
+        if self.__as_json:
             return self.__json(self.__sections)
         else:
             return self.__text(self.__sections)
@@ -180,14 +181,14 @@ class FormattedSections(Formattable):
 
 class FormattedSymbolTable(Formattable):
     def __init__(
-        self, symbol_table: SymbolTable, name: str, to_json: bool = False
+        self, symbol_table: SymbolTable, name: str, as_json: bool = False
     ):
         self.__symbol_table = symbol_table
         self.__name = name
-        self.__to_json = to_json
+        self.__as_json = as_json
 
     def format(self) -> str:
-        if self.__to_json:
+        if self.__as_json:
             return self.__json(self.__symbol_table, self.__name)
         else:
             return self.__text(self.__symbol_table, self.__name)
@@ -262,15 +263,15 @@ class FormattedDisassembly(Formattable):
         disassembly: Disassembly,
         offset: int = 0,
         size: int = 0,
-        to_json: bool = False,
+        as_json: bool = False,
     ):
         self.__disassembly = disassembly
         self.__offset = offset
         self.__size = size
-        self.__to_json = to_json
+        self.__as_json = as_json
 
     def format(self) -> str:
-        if self.__to_json:
+        if self.__as_json:
             return self.__json(self.__disassembly, self.__offset, self.__size)
         else:
             return self.__text(self.__disassembly, self.__offset, self.__size)
@@ -290,12 +291,12 @@ class FormattedDisassembly(Formattable):
 
 
 class FormattedSegments(Formattable):
-    def __init__(self, segments: Segments, to_json: bool = False):
+    def __init__(self, segments: Segments, as_json: bool = False):
         self.__segments = segments
-        self.__to_json = to_json
+        self.__as_json = as_json
 
     def format(self) -> str:
-        if self.__to_json:
+        if self.__as_json:
             return self.__json(self.__segments)
         else:
             return self.__text(self.__segments)
@@ -365,12 +366,12 @@ class FormattedSegments(Formattable):
 
 
 class FormattedDynamic(Formattable):
-    def __init__(self, dynamic: Dynamic, to_json: bool = False):
+    def __init__(self, dynamic: Dynamic, as_json: bool = False):
         self.__dynamic = dynamic
-        self.__to_json = to_json
+        self.__as_json = as_json
 
     def format(self) -> str:
-        if self.__to_json:
+        if self.__as_json:
             return self.__json(self.__dynamic)
         else:
             return self.__text(self.__dynamic)

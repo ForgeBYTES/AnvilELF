@@ -394,9 +394,9 @@ class RawDisassembly(Disassembly):
         raise ValueError("Section is not executable")
 
     def __data(self, data: bytes, offset: int, size: int) -> bytes:
-        if self.__is_exceeded(data, offset, size):
-            raise ValueError("Disassembly range exceeded")
-        return data[offset : offset + size] if size else data[offset:]
+        if not self.__is_exceeded(data, offset, size):
+            return data[offset : offset + size] if size else data[offset:]
+        raise ValueError("Disassembly range exceeded")
 
     def __is_executable(self, header: dict[str, int]) -> bool:
         return bool(header["sh_flags"] & self.__SHF_EXECINSTR)

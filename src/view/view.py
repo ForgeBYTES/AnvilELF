@@ -303,7 +303,7 @@ class FormattedSegments(Formattable):
 
     def __text(self, segments: Segments) -> str:
         lines = [
-            f"{'Idx':<4} {'Type':<15} {'Flags':<10} {'Offset':<10} "
+            f"{'Idx':<4} {'Type':<17} {'Flags':<10} {'Offset':<10} "
             f"{'VirtAddr':<12} {'PhysAddr':<12} {'FileSize':<10} "
             f"{'MemSize':<10} {'Align':<6}"
         ]
@@ -311,7 +311,7 @@ class FormattedSegments(Formattable):
             header = segment.header()
             lines.append(
                 f"{f'[{index}]':<4} "
-                f"{self.__type(header['p_type']):<15} "
+                f"{self.__type(header['p_type']):<17} "
                 f"{self.__flags(header['p_flags']):<10} "
                 f"0x{header['p_offset']:06x}   "
                 f"0x{header['p_vaddr']:08x}   "
@@ -341,18 +341,18 @@ class FormattedSegments(Formattable):
 
     def __type(self, p_type: int) -> str:
         return {
-            ProgramHeader.PT_NULL: "NULL",
-            ProgramHeader.PT_LOAD: "LOAD",
-            ProgramHeader.PT_DYNAMIC: "DYNAMIC",
-            ProgramHeader.PT_INTERP: "INTERP",
-            ProgramHeader.PT_NOTE: "NOTE",
-            ProgramHeader.PT_SHLIB: "SHLIB",
-            ProgramHeader.PT_PHDR: "PHDR",
-            ProgramHeader.PT_TLS: "TLS",
-            ProgramHeader.GNU_EH_FRAME: "GNU_EH_FRAME",
-            ProgramHeader.GNU_STACK: "GNU_STACK",
-            ProgramHeader.GNU_RELRO: "GNU_RELRO",
-            ProgramHeader.GNU_PROPERTY: "GNU_PROPERTY",
+            ProgramHeader.PT_NULL: "PT_NULL",
+            ProgramHeader.PT_LOAD: "PT_LOAD",
+            ProgramHeader.PT_DYNAMIC: "PT_DYNAMIC",
+            ProgramHeader.PT_INTERP: "PT_INTERP",
+            ProgramHeader.PT_NOTE: "PT_NOTE",
+            ProgramHeader.PT_SHLIB: "PT_SHLIB",
+            ProgramHeader.PT_PHDR: "PT_PHDR",
+            ProgramHeader.PT_TLS: "PT_TLS",
+            ProgramHeader.PT_GNU_EH_FRAME: "PT_GNU_EH_FRAME",
+            ProgramHeader.PT_GNU_STACK: "PT_GNU_STACK",
+            ProgramHeader.PT_GNU_RELRO: "PT_GNU_RELRO",
+            ProgramHeader.PT_GNU_PROPERTY: "PT_GNU_PROPERTY",
         }.get(p_type, f"{p_type}")
 
     def __flags(self, p_flags: int) -> str:

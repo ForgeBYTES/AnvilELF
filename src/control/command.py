@@ -125,13 +125,11 @@ class StringTableCommand(Command):
         command_name: str,
         section_name: str,
         string_table_name: str,
-        validated: bool = False,
     ):
         self.__sections = sections
         self.__command_name = command_name
         self.__section_name = section_name
         self.__string_table_name = string_table_name
-        self.__validated = validated
 
     def name(self) -> str:
         return self.__command_name

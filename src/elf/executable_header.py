@@ -6,17 +6,17 @@ from src.elf.validation import Validatable
 
 
 class ExecutableHeader(ABC):
-    _HEADER_SIZE = 64
-    _E_INDENT_FIELDS = [
-        "EI_MAG",
-        "EI_CLASS",
-        "EI_DATA",
-        "EI_VERSION",
-        "EI_OSABI",
-        "EI_ABIVERSION",
-        "EI_PAD",
+    HEADER_SIZE = 64
+    E_INDENT_FIELDS = [
+        "ei_mag",
+        "ei_class",
+        "ei_data",
+        "ei_version",
+        "ei_osabi",
+        "ei_abiversion",
+        "ei_pad",
     ]
-    _FIELDS = [
+    FIELDS = [
         "e_ident",
         "e_type",
         "e_machine",
@@ -33,22 +33,22 @@ class ExecutableHeader(ABC):
         "e_shstrndx",
     ]
 
-    _MAGIC_VALUE = b"\x7fELF"
+    MAGIC_VALUE = b"\x7fELF"
 
-    _ELFDATA2LSB = 1
-    _ELFDATA2MSB = 2
+    ELFDATA2LSB = 1
+    ELFDATA2MSB = 2
 
-    _ET_REL = 1
-    _ET_EXEC = 2
-    _ET_DYN = 3
-    _ET_CORE = 4
+    ET_REL = 1
+    ET_EXEC = 2
+    ET_DYN = 3
+    ET_CORE = 4
 
-    _ELFCLASS64 = 2
+    ELFCLASS64 = 2
 
-    _EM_X86_64 = 62
+    EM_X86_64 = 62
 
-    _ENDIANNESS = [_ELFDATA2LSB, _ELFDATA2MSB]
-    _TYPES = [_ET_REL, _ET_EXEC, _ET_DYN, _ET_CORE]
+    ENDIANNESS = [ELFDATA2LSB, ELFDATA2MSB]
+    TYPES = [ET_REL, ET_EXEC, ET_DYN, ET_CORE]
 
     @abstractmethod
     def fields(self) -> dict[str, Any]:
@@ -68,19 +68,19 @@ class RawExecutableHeader(ExecutableHeader):
     def fields(self) -> dict[str, Any]:
         try:
             _struct = struct.unpack(
-                self.__STRUCT_FORMAT, self.__raw_data[: self._HEADER_SIZE]
+                self.__STRUCT_FORMAT, self.__raw_data[: self.HEADER_SIZE]
             )
         except struct.error:
             raise ValueError("Unable to process data")
         fields = {
             "e_ident": {
-                "EI_MAG": _struct[0],
-                "EI_CLASS": _struct[1],
-                "EI_DATA": _struct[2],
-                "EI_VERSION": _struct[3],
-                "EI_OSABI": _struct[4],
-                "EI_ABIVERSION": _struct[5],
-                "EI_PAD": _struct[6],
+                "ei_mag": _struct[0],
+                "ei_class": _struct[1],
+                "ei_data": _struct[2],
+                "ei_version": _struct[3],
+                "ei_osabi": _struct[4],
+                "ei_abiversion": _struct[5],
+                "ei_pad": _struct[6],
             },
             "e_type": _struct[7],
             "e_machine": _struct[8],
@@ -101,14 +101,14 @@ class RawExecutableHeader(ExecutableHeader):
 
     def change(self, fields: dict[str, Any]) -> None:
         try:
-            self.__raw_data[: self._HEADER_SIZE] = struct.pack(
+            self.__raw_data[: self.HEADER_SIZE] = struct.pack(
                 self.__STRUCT_FORMAT,
                 *tuple(
-                    fields["e_ident"][field] for field in self._E_INDENT_FIELDS
+                    fields["e_ident"][field] for field in self.E_INDENT_FIELDS
                 ),
                 *tuple(
                     fields[field]
-                    for field in self._FIELDS
+                    for field in self.FIELDS
                     if field != "e_ident"
                 ),
             )
@@ -117,9 +117,9 @@ class RawExecutableHeader(ExecutableHeader):
 
     def __assert_64_bit(self, fields: dict[str, Any]) -> None:
         if not (
-            fields["e_ident"]["EI_CLASS"] == self._ELFCLASS64
-            and fields["e_machine"] == self._EM_X86_64
-            and fields["e_ehsize"] == self._HEADER_SIZE
+            fields["e_ident"]["ei_class"] == self.ELFCLASS64
+            and fields["e_machine"] == self.EM_X86_64
+            and fields["e_ehsize"] == self.HEADER_SIZE
         ):
             raise ValueError("Binary must be 64-bit")
 
@@ -145,7 +145,7 @@ class ValidatedExecutableHeader(ExecutableHeader, Validatable):
                 case "e_ident":
                     invalid_fields.update(self.__invalid_e_ident(value))
                 case "e_type":
-                    if value not in self._TYPES:
+                    if value not in self.TYPES:
                         invalid_fields[field] = value
                 case "e_entry":
                     if value <= 0:
@@ -163,10 +163,10 @@ class ValidatedExecutableHeader(ExecutableHeader, Validatable):
                     if value not in [0, 56]:
                         invalid_fields[field] = value
                 case "e_flags":
-                    if fields["e_machine"] == self._EM_X86_64 and value != 0:
+                    if fields["e_machine"] == self.EM_X86_64 and value != 0:
                         invalid_fields[field] = value
                 case _:
-                    if field not in self._FIELDS:
+                    if field not in self.FIELDS:
                         invalid_fields[field] = value
         if invalid_fields:
             raise ValueError(
@@ -177,17 +177,17 @@ class ValidatedExecutableHeader(ExecutableHeader, Validatable):
         invalid_fields: dict[str, Any] = {}
         for field, value in fields.items():
             match field:
-                case "EI_MAG":
-                    if value != self._MAGIC_VALUE:
+                case "ei_mag":
+                    if value != self.MAGIC_VALUE:
                         invalid_fields[field] = value
-                case "EI_DATA":
-                    if value not in self._ENDIANNESS:
+                case "ei_data":
+                    if value not in self.ENDIANNESS:
                         invalid_fields[field] = value
-                case "EI_VERSION":
+                case "ei_version":
                     if value != 1:
                         invalid_fields[field] = value
                 case _:
-                    if field not in self._E_INDENT_FIELDS:
+                    if field not in self.E_INDENT_FIELDS:
                         invalid_fields[field] = value
         return invalid_fields
 

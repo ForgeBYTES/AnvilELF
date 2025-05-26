@@ -7,6 +7,9 @@ from src.control.command import (
     ExecutableHeaderCommand,
     FiniCommand,
     InitCommand,
+    MutateExecutableHeaderCommand,
+    MutateProgramHeaderCommand,
+    MutateSectionHeaderCommand,
     PltCommand,
     SectionCommand,
     SectionsCommand,
@@ -32,13 +35,14 @@ class Application:
         try:
             print(self.__intro)
             arguments = self.__arguments(self.__argv)
+            binary = RawBinary(arguments.binary)
             (
                 executable_header,
                 section_headers,
                 sections,
                 program_headers,
                 segments,
-            ) = RawBinary(arguments.binary).components()
+            ) = binary.components()
             return HistoricalCommandLine(
                 InteractiveCommandLine(
                     self.__hint,
@@ -54,6 +58,19 @@ class Application:
                         DynsymCommand(sections),
                         SegmentsCommand(segments, program_headers),
                         DynamicCommand(segments),
+                        MutateExecutableHeaderCommand(
+                            executable_header,
+                            binary,
+                        ),
+                        MutateSectionHeaderCommand(
+                            sections,
+                            section_headers,
+                            binary,
+                        ),
+                        MutateProgramHeaderCommand(
+                            segments,
+                            binary,
+                        ),
                     ],
                 )
             )

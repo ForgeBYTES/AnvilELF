@@ -207,8 +207,8 @@ def test_section_command(
         r"Address alignment:\s+\d+",
         r"Section entry size:\s+\d+",
         r"Section:\n\s+Name:\s+\.[\w\.]+",
-        r"Data:\s+([0-9a-fA-F]{2} ?)+\.\.\.",
-        r"ASCII:\s+.+\.\.\.",
+        r"Data \(\d+ bytes\):\s+([0-9a-fA-F]{2} ?)+",
+        r"ASCII \(\d+ bytes\):\s+.+",
     ]
 
     executable_header = RawExecutableHeader(raw_data)
@@ -247,8 +247,8 @@ def test_section_command_with_full_flag(
         r"Address alignment:\s+\d+",
         r"Section entry size:\s+\d+",
         r"Section:\n\s+Name:\s+\.[\w\.]+",
-        r"Data:\s+([0-9a-fA-F]{2} ?)",
-        r"ASCII:\s+.",
+        r"Data \(\d+ bytes\):\s+([0-9a-fA-F]{2} ?)",
+        r"ASCII \(\d+ bytes\):\s+.",
     ]
 
     executable_header = RawExecutableHeader(raw_data)
@@ -288,8 +288,8 @@ def test_section_command_with_stripped_section_headers(
         "  Section entry size: 0\n"
         "Section:\n"
         "  Name: 0\n"
-        "  Data: ---\n"
-        "  ASCII: ---\n"
+        "  Data (0 bytes): -\n"
+        "  ASCII (0 bytes): -\n"
     )
 
     executable_header = RawExecutableHeader(raw_data)
@@ -330,8 +330,8 @@ def test_section_command_with_stripped_section_headers_and_full_flag(
         "  Section entry size: 0\n"
         "Section:\n"
         "  Name: 0\n"
-        "  Data: ---\n"
-        "  ASCII: ---\n"
+        "  Data (0 bytes): -\n"
+        "  ASCII (0 bytes): -\n"
     )
 
     executable_header = RawExecutableHeader(raw_data)

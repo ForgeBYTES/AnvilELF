@@ -13,13 +13,13 @@ from src.elf.executable_header import (
 def expected_data() -> dict[str, Any]:
     return {
         "e_ident": {
-            "EI_MAG": b"\x7fELF",
-            "EI_CLASS": 2,
-            "EI_DATA": 1,
-            "EI_VERSION": 1,
-            "EI_OSABI": 0,
-            "EI_ABIVERSION": 0,
-            "EI_PAD": b"\x00" * 7,
+            "ei_mag": b"\x7fELF",
+            "ei_class": 2,
+            "ei_data": 1,
+            "ei_version": 1,
+            "ei_osabi": 0,
+            "ei_abiversion": 0,
+            "ei_pad": b"\x00" * 7,
         },
         "e_type": 3,
         "e_machine": 62,
@@ -89,14 +89,14 @@ def test_changing_fields(
     expected_ei_data = 2
     expected_e_type = 1
 
-    expected_data["e_ident"]["EI_DATA"] = expected_ei_data
+    expected_data["e_ident"]["ei_data"] = expected_ei_data
     expected_data["e_type"] = expected_e_type
 
     executable_header = _class(raw_data)
 
     original_fields = executable_header.fields()
 
-    assert original_fields["e_ident"]["EI_DATA"] == original_ei_data
+    assert original_fields["e_ident"]["ei_data"] == original_ei_data
     assert original_fields["e_type"] == original_e_type
 
     executable_header.change(expected_data)
@@ -237,19 +237,19 @@ def test_raising_on_changing_field_with_invalid_value(
     "field, invalid_value, error_message",
     [
         (
-            "EI_MAG",
+            "ei_mag",
             b"invalid",
-            "Executable header contains invalid values:\n  EI_MAG=b'invalid'",
+            "Executable header contains invalid values:\n  ei_mag=b'invalid'",
         ),
         (
-            "EI_DATA",
+            "ei_data",
             3,
-            "Executable header contains invalid values:\n  EI_DATA=3",
+            "Executable header contains invalid values:\n  ei_data=3",
         ),
         (
-            "EI_VERSION",
+            "ei_version",
             2,
-            "Executable header contains invalid values:\n  EI_VERSION=2",
+            "Executable header contains invalid values:\n  ei_version=2",
         ),
     ],
 )
@@ -275,8 +275,8 @@ def test_raising_on_changing_multiple_fields_with_invalid_values(
     raw_data: bytearray,
     expected_data: dict[str, Any],
 ) -> None:
-    expected_data["e_ident"]["EI_MAG"] = b"invalid"
-    expected_data["e_ident"]["EI_VERSION"] = 2
+    expected_data["e_ident"]["ei_mag"] = b"invalid"
+    expected_data["e_ident"]["ei_version"] = 2
     expected_data["e_flags"] = 0xDEADBEEF
     expected_data["e_shentsize"] = 128
 
@@ -284,8 +284,8 @@ def test_raising_on_changing_multiple_fields_with_invalid_values(
         ValueError,
         match=(
             "Executable header contains invalid values:\n"
-            "  EI_MAG=b'invalid'\n"
-            "  EI_VERSION=2\n"
+            "  ei_mag=b'invalid'\n"
+            "  ei_version=2\n"
             f"  e_flags={0xDEADBEEF}\n"
             "  e_shentsize=128"
         ),

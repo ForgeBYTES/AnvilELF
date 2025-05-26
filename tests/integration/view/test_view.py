@@ -77,13 +77,13 @@ def test_formatting_executable_header_as_json(
         "{\n"
         '  "executable_header": {\n'
         '    "e_ident": {\n'
-        '      "EI_MAG": "7f 45 4c 46",\n'
-        '      "EI_CLASS": 2,\n'
-        '      "EI_DATA": 1,\n'
-        '      "EI_VERSION": 1,\n'
-        '      "EI_OSABI": 0,\n'
-        '      "EI_ABIVERSION": 0,\n'
-        '      "EI_PAD": "00 00 00 00 00 00 00"\n'
+        '      "ei_mag": "7f 45 4c 46",\n'
+        '      "ei_class": 2,\n'
+        '      "ei_data": 1,\n'
+        '      "ei_version": 1,\n'
+        '      "ei_osabi": 0,\n'
+        '      "ei_abiversion": 0,\n'
+        '      "ei_pad": "00 00 00 00 00 00 00"\n'
         "    },\n"
         '    "e_type": 3,\n'
         '    "e_machine": 62,\n'
@@ -130,9 +130,9 @@ def test_formatting_section(
         "  Section entry size: 0\n"
         "Section:\n"
         "  Name: 17\n"
-        "  Data: 00 2e 73 79 6d 74 61 62 00 2e 73 74 72 74 61 62 00 2e 73 68 "
-        "73 74 72 74 61 62 00 2e 69 6e 74 65 ...\n"
-        "  ASCII: ..symtab..strtab..shstrtab..inte ...\n"
+        "  Data (32 bytes): 00 2e 73 79 6d 74 61 62 00 2e 73 74 72 74 61 62 "
+        "00 2e 73 68 73 74 72 74 61 62 00 2e 69 6e 74 65\n"
+        "  ASCII (32 bytes): ..symtab..strtab..shstrtab..inte\n"
     )
 
     executable_header = RawExecutableHeader(raw_data)
@@ -210,8 +210,8 @@ def test_formatting_full_section(
         r"Address alignment:\s+\d+",
         r"Section entry size:\s+\d+",
         r"Section:\n\s+Name:\s+\d+",
-        r"Data:\s+([0-9a-fA-F]{2} ?)",
-        r"ASCII:\s+.",
+        r"Data \(\d+ bytes\):\s+([0-9a-fA-F]{2} ?)",
+        r"ASCII \(\d+ bytes\):\s+.",
     ]
 
     executable_header = RawExecutableHeader(raw_data)
@@ -510,7 +510,7 @@ def test_formatting_dynamic_entries(
         raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
     )
     for segment in segments.all():
-        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+        if segment.header().fields()["p_type"] == ProgramHeader.PT_DYNAMIC:
             _format = FormattedDynamic(RawDynamic(segment)).format()
 
             assert re.match(
@@ -542,7 +542,7 @@ def test_formatting_dynamic_entries_as_json(
         raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
     )
     for segment in segments.all():
-        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+        if segment.header().fields()["p_type"] == ProgramHeader.PT_DYNAMIC:
             _format = FormattedDynamic(
                 RawDynamic(segment), as_json=True
             ).format()

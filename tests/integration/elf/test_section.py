@@ -497,7 +497,7 @@ def test_raising_on_returning_section_data_with_exceeding_size(
     )
     section_header = RawSectionHeader(
         raw_data,
-        sections.find(".shstrtab").header()["sh_offset"],
+        sections.find(".shstrtab").header().fields()["sh_offset"],
     )
 
     fields = section_header.fields()

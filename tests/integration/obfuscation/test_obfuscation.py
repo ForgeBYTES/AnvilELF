@@ -59,13 +59,13 @@ def test_returning_components_by_headerless_binary(
 ) -> None:
     expected_executable_header = {
         "e_ident": {
-            "EI_MAG": b"\x7fELF",
-            "EI_CLASS": 2,
-            "EI_DATA": 1,
-            "EI_VERSION": 1,
-            "EI_OSABI": 0,
-            "EI_ABIVERSION": 0,
-            "EI_PAD": b"\x00" * 7,
+            "ei_mag": b"\x7fELF",
+            "ei_class": 2,
+            "ei_data": 1,
+            "ei_version": 1,
+            "ei_osabi": 0,
+            "ei_abiversion": 0,
+            "ei_pad": b"\x00" * 7,
         },
         "e_type": 3,
         "e_machine": 62,

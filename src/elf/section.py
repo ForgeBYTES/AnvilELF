@@ -10,7 +10,7 @@ from src.elf.validation import Validatable
 
 class Section(ABC):
     @abstractmethod
-    def header(self) -> dict[str, int]:
+    def header(self) -> SectionHeader:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -151,8 +151,8 @@ class RawSection(Section):
         self.__section_header = header
         self.__shstrtab = shstrtab
 
-    def header(self) -> dict[str, int]:
-        return self.__section_header.fields()
+    def header(self) -> SectionHeader:
+        return self.__section_header
 
     def raw_data(self) -> memoryview:
         fields = self.__section_header.fields()
@@ -164,9 +164,7 @@ class RawSection(Section):
 
     def replace(self, data: bytes) -> None:
         fields = self.__section_header.fields()
-        if not (
-            self.__is_in_range(fields) and self.__is_valid_size(data, fields)
-        ):
+        if not (self.__is_in_range(fields) and len(data) == fields["sh_size"]):
             raise ValueError("Invalid section size")
         self.__raw_data[
             fields["sh_offset"] : fields["sh_offset"] + fields["sh_size"]
@@ -181,9 +179,6 @@ class RawSection(Section):
 
     def __is_in_range(self, fields: dict[str, int]) -> bool:
         return fields["sh_offset"] + fields["sh_size"] <= len(self.__raw_data)
-
-    def __is_valid_size(self, data: bytes, fields: dict[str, int]) -> bool:
-        return len(data) == fields["sh_size"]
 
 
 class RawStringTable(StringTable):
@@ -376,7 +371,7 @@ class RawDisassembly(Disassembly):
         self.__cs.syntax = capstone.CS_OPT_SYNTAX_INTEL
 
     def instructions(self, offset: int = 0, size: int = 0) -> list[str]:
-        header = self.__section.header()
+        header = self.__section.header().fields()
         if self.__is_executable(header):
             return [
                 self.__instruction(

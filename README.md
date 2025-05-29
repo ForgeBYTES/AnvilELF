@@ -74,6 +74,19 @@ anvil> symtab --validate
 anvil> dynsym
 anvil> dynsym --validate
 
+# Mutate executable header
+mutate-header -f FIELD -V VALUE [-v]
+# Mutate section header 
+mutate-section-header -f FIELD -V VALUE [-v]
+# Mutate program header
+mutate-program-header -f FIELD -V VALUE [-v]
+# Mutate symbol
+mutate-symbol -s SYMBOL_TABLE -n NAME -f FIELD -V VALUE [-v]
+# Replace section data
+replace-section -s SECTION -b BYTES
+# Replace segment data
+replace-segment -o OFFSET -b BYTES
+
 # Exit the shell
 anvil> exit
 ```

@@ -54,12 +54,12 @@ anvil> dynamic
 anvil> dynamic --validate
 
 # Show a specific section by name
-anvil> section --name .shstrtab
-anvil> section --name .shstrtab --full
+anvil> section --name NAME
+anvil> section --name NAME --full
 
 # Disassemble .text section
 anvil> text
-anvil> text --offset 0 --size 10
+anvil> text --offset OFFSET --size SIZE
 # Disassemble .plt section
 anvil> plt
 # Disassemble .init section
@@ -75,17 +75,17 @@ anvil> dynsym
 anvil> dynsym --validate
 
 # Mutate executable header
-mutate-header -f FIELD -V VALUE [-v]
+anvil> mutate-header -f FIELD -V VALUE [-v]
 # Mutate section header 
-mutate-section-header -f FIELD -V VALUE [-v]
+anvil> mutate-section-header -f FIELD -V VALUE [-v]
 # Mutate program header
-mutate-program-header -f FIELD -V VALUE [-v]
+anvil> mutate-program-header -f FIELD -V VALUE [-v]
 # Mutate symbol
-mutate-symbol -s SYMBOL_TABLE -n NAME -f FIELD -V VALUE [-v]
+anvil> mutate-symbol -s SYMBOL_TABLE -n NAME -f FIELD -V VALUE [-v]
 # Replace section data
-replace-section -s SECTION -b BYTES
+anvil> replace-section -s SECTION -b BYTES
 # Replace segment data
-replace-segment -o OFFSET -b BYTES
+anvil> replace-segment -o OFFSET -b BYTES
 
 # Exit the shell
 anvil> exit

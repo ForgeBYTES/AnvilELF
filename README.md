@@ -10,7 +10,7 @@
 
 **From raw bytes to forged ELF — crafted with purist OOP.**
 
-AnvilELF is a purist object-oriented tool for ELF binary parsing, inspection, and modification.  
+AnvilELF is a purist object-oriented lab for ELF binary parsing, inspection, and modification.  
 It is built with **SOLID principles**, **full test coverage**, and a strong focus on **maintainability**.
 
 ![AnvilELF CLI in action](media/cli_preview.gif)

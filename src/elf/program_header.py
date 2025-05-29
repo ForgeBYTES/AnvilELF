@@ -147,7 +147,10 @@ class ValidatedProgramHeader(ProgramHeader, Validatable):
                     if not self.__is_valid_type(value):
                         invalid_fields[field] = value
                 case "p_flags":
-                    if value & ~(self.PF_X | self.PF_W | self.PF_R) != 0:
+                    if (
+                        value == 0
+                        or value & ~(self.PF_X | self.PF_W | self.PF_R) != 0
+                    ):
                         invalid_fields[field] = value
                 case "p_align":
                     if not self.__is_power_of_two(value) and value != 0:

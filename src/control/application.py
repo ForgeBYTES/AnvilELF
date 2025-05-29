@@ -7,9 +7,16 @@ from src.control.command import (
     ExecutableHeaderCommand,
     FiniCommand,
     InitCommand,
+    MutateExecutableHeaderCommand,
+    MutateProgramHeaderCommand,
+    MutateSectionHeaderCommand,
+    MutateSymbolCommand,
     PltCommand,
+    ReplaceSectionCommand,
+    ReplaceSegmentCommand,
     SectionCommand,
     SectionsCommand,
+    SegmentCommand,
     SegmentsCommand,
     SymtabCommand,
     TextCommand,
@@ -32,13 +39,14 @@ class Application:
         try:
             print(self.__intro)
             arguments = self.__arguments(self.__argv)
+            binary = RawBinary(arguments.binary)
             (
                 executable_header,
                 section_headers,
                 sections,
                 program_headers,
                 segments,
-            ) = RawBinary(arguments.binary).components()
+            ) = binary.components()
             return HistoricalCommandLine(
                 InteractiveCommandLine(
                     self.__hint,
@@ -53,7 +61,24 @@ class Application:
                         SymtabCommand(sections),
                         DynsymCommand(sections),
                         SegmentsCommand(segments, program_headers),
+                        SegmentCommand(segments),
                         DynamicCommand(segments),
+                        MutateExecutableHeaderCommand(
+                            executable_header,
+                            binary,
+                        ),
+                        MutateSectionHeaderCommand(
+                            sections,
+                            section_headers,
+                            binary,
+                        ),
+                        MutateProgramHeaderCommand(
+                            segments,
+                            binary,
+                        ),
+                        MutateSymbolCommand(sections, binary),
+                        ReplaceSectionCommand(sections, binary),
+                        ReplaceSegmentCommand(segments, binary),
                     ],
                 )
             )

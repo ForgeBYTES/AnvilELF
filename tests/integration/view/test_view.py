@@ -1,7 +1,6 @@
 import re
 
 import pytest
-from _pytest.capture import CaptureFixture
 from _pytest.fixtures import FixtureRequest
 
 from src.elf.executable_header import RawExecutableHeader
@@ -21,6 +20,7 @@ from src.view.view import (
     FormattedExecutableHeader,
     FormattedSection,
     FormattedSections,
+    FormattedSegment,
     FormattedSegments,
     FormattedSymbolTable,
 )
@@ -35,9 +35,7 @@ def raw_data(request: FixtureRequest) -> bytearray:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_formatting_executable_header(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_executable_header(raw_data: bytearray) -> None:
     expected_output = (
         "Executable Header:\n"
         "  Magic: 7f 45 4c 46\n"
@@ -58,7 +56,7 @@ def test_formatting_executable_header(
         "  Number of program headers: 13\n"
         "  Section header entry size: 64\n"
         "  Number of section headers: 39\n"
-        "  Section header string table index: 38\n"
+        "  Section header string table index: 38"
     )
 
     assert (
@@ -70,20 +68,18 @@ def test_formatting_executable_header(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_formatting_executable_header_as_json(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_executable_header_as_json(raw_data: bytearray) -> None:
     expected_output = (
         "{\n"
         '  "executable_header": {\n'
         '    "e_ident": {\n'
-        '      "EI_MAG": "7f 45 4c 46",\n'
-        '      "EI_CLASS": 2,\n'
-        '      "EI_DATA": 1,\n'
-        '      "EI_VERSION": 1,\n'
-        '      "EI_OSABI": 0,\n'
-        '      "EI_ABIVERSION": 0,\n'
-        '      "EI_PAD": "00 00 00 00 00 00 00"\n'
+        '      "ei_mag": "7f 45 4c 46",\n'
+        '      "ei_class": 2,\n'
+        '      "ei_data": 1,\n'
+        '      "ei_version": 1,\n'
+        '      "ei_osabi": 0,\n'
+        '      "ei_abiversion": 0,\n'
+        '      "ei_pad": "00 00 00 00 00 00 00"\n'
         "    },\n"
         '    "e_type": 3,\n'
         '    "e_machine": 62,\n'
@@ -113,9 +109,7 @@ def test_formatting_executable_header_as_json(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_formatting_section(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_section(raw_data: bytearray) -> None:
     expected_output = (
         "Section Header:\n"
         "  Name: 17\n"
@@ -130,9 +124,10 @@ def test_formatting_section(
         "  Section entry size: 0\n"
         "Section:\n"
         "  Name: 17\n"
-        "  Data: 00 2e 73 79 6d 74 61 62 00 2e 73 74 72 74 61 62 00 2e 73 68 "
-        "73 74 72 74 61 62 00 2e 69 6e 74 65 ...\n"
-        "  ASCII: ..symtab..strtab..shstrtab..inte ...\n"
+        "  Data (32 bytes): \\x00\\x2e\\x73\\x79\\x6d\\x74\\x61\\x62\\x00\\"
+        "x2e\\x73\\x74\\x72\\x74\\x61\\x62\\x00\\x2e\\x73\\x68\\x73\\x74\\"
+        "x72\\x74\\x61\\x62\\x00\\x2e\\x69\\x6e\\x74\\x65\n"
+        "  ASCII (32 bytes): ..symtab..strtab..shstrtab..inte"
     )
 
     executable_header = RawExecutableHeader(raw_data)
@@ -153,9 +148,7 @@ def test_formatting_section(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_formatting_section_as_json(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_section_as_json(raw_data: bytearray) -> None:
     expected_output = (
         "{\n"
         '  "section_header": {\n'
@@ -171,8 +164,10 @@ def test_formatting_section_as_json(
         '    "sh_entsize": 0\n'
         "  },\n"
         '  "name": "17",\n'
-        '  "data": "00 2e 73 79 6d 74 61 62 00 2e 73 74 72 74 61 62 00 2e 73 '
-        '68 73 74 72 74 61 62 00 2e 69 6e 74 65"\n'
+        '  "data": "\\\\x00\\\\x2e\\\\x73\\\\x79\\\\x6d\\\\x74\\\\x61'
+        "\\\\x62\\\\x00\\\\x2e\\\\x73\\\\x74\\\\x72\\\\x74\\\\x61\\\\x62"
+        "\\\\x00\\\\x2e\\\\x73\\\\x68\\\\x73\\\\x74\\\\x72\\\\x74\\\\x61"
+        '\\\\x62\\\\x00\\\\x2e\\\\x69\\\\x6e\\\\x74\\\\x65"\n'
         "}"
     )
 
@@ -195,9 +190,7 @@ def test_formatting_section_as_json(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_formatting_full_section(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_full_section(raw_data: bytearray) -> None:
     patterns = [
         r"Section Header:\n\s+Name:\s+\d+",
         r"Type:\s+\d+",
@@ -210,8 +203,8 @@ def test_formatting_full_section(
         r"Address alignment:\s+\d+",
         r"Section entry size:\s+\d+",
         r"Section:\n\s+Name:\s+\d+",
-        r"Data:\s+([0-9a-fA-F]{2} ?)",
-        r"ASCII:\s+.",
+        r"Data \(\d+ bytes\):\s+(\\x[0-9a-fA-F]{2})+",
+        r"ASCII \(\d+ bytes\):\s+.",
     ]
 
     executable_header = RawExecutableHeader(raw_data)
@@ -237,9 +230,7 @@ def test_formatting_full_section(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_formatting_sections(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_sections(raw_data: bytearray) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(
         raw_data,
@@ -274,9 +265,7 @@ def test_formatting_sections(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_formatting_sections_as_json(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_sections_as_json(raw_data: bytearray) -> None:
     patterns = [
         r'"sections"\s*:\s*\[',
         r'"name"\s*:\s*"\.[a-zA-Z0-9_.]+"',
@@ -300,9 +289,7 @@ def test_formatting_sections_as_json(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_formatting_symbol_table(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_symbol_table(raw_data: bytearray) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(
         raw_data,
@@ -337,9 +324,7 @@ def test_formatting_symbol_table(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_formatting_symbol_table_as_json(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_symbol_table_as_json(raw_data: bytearray) -> None:
     patterns = [
         r'"symbol_table"\s*:\s*"\.dynsym"',
         r'"name"\s*:\s*"[a-zA-Z0-9_]+"',
@@ -374,9 +359,7 @@ def test_formatting_symbol_table_as_json(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_formatting_disassembly(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_disassembly(raw_data: bytearray) -> None:
     expected_output = (
         "00001060: endbr64\n"
         "00001064: xor ebp, ebp\n"
@@ -412,9 +395,7 @@ def test_formatting_disassembly(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_formatting_disassembly_as_json(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_disassembly_as_json(raw_data: bytearray) -> None:
     patterns = [
         r'"offset"\s*:\s*\d+',
         r'"size"\s*:\s*\d+',
@@ -441,9 +422,7 @@ def test_formatting_disassembly_as_json(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_formatting_segments(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_segments(raw_data: bytearray) -> None:
     executable_header = RawExecutableHeader(raw_data)
     segments = RawSegments(
         raw_data,
@@ -475,9 +454,7 @@ def test_formatting_segments(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_formatting_segments_as_json(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_segments_as_json(raw_data: bytearray) -> None:
     patterns = [
         r'"segments"\s*:\s*\[',
         r'"program_header"\s*:\s*\{',
@@ -501,16 +478,95 @@ def test_formatting_segments_as_json(
 
 
 @pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_formatting_segment(raw_data: bytearray) -> None:
+    expected_output = (
+        "Program Header:\n"
+        "  Type: 1\n"
+        "  Flags: 0x5\n"
+        "  Offset: 0x1000\n"
+        "  Virtual address: 0x1000\n"
+        "  Physical address: 0x1000\n"
+        "  File size: 389 bytes\n"
+        "  Memory size: 389 bytes\n"
+        "  Alignment: 4096\n"
+        "Segment:\n"
+        "  Type: 1\n"
+        "  Data (32 bytes): \\xf3\\x0f\\x1e\\xfa\\x48\\x83\\xec\\x08\\x48\\"
+        "x8b\\x05\\xd9\\x2f\\x00\\x00\\x48\\x85\\xc0\\x74\\x02\\xff\\xd0\\"
+        "x48\\x83\\xc4\\x08\\xc3\\x00\\x00\\x00\\x00\\x00\n"
+        "  ASCII (32 bytes): ....H...H.../..H..t...H........."
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+    segments = RawSegments(
+        raw_data,
+        RawProgramHeaders(raw_data, executable_header),
+    )
+
+    assert (
+        FormattedSegment(
+            segments.occurrence(
+                ProgramHeader.PT_LOAD,
+                ProgramHeader.PF_R | ProgramHeader.PF_X,
+            )
+        ).format()
+        == expected_output
+    )
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_formatting_segment_as_json(raw_data: bytearray) -> None:
+    expected_output = (
+        "{\n"
+        '  "program_header": {\n'
+        '    "p_type": 1,\n'
+        '    "p_flags": 5,\n'
+        '    "p_offset": 4096,\n'
+        '    "p_vaddr": 4096,\n'
+        '    "p_paddr": 4096,\n'
+        '    "p_filesz": 389,\n'
+        '    "p_memsz": 389,\n'
+        '    "p_align": 4096\n'
+        "  },\n"
+        '  "type": "1",\n'
+        '  "data": "\\\\xf3\\\\x0f\\\\x1e\\\\xfa\\\\x48\\\\x83\\\\xec\\\\'
+        "x08\\\\x48\\\\x8b\\\\x05\\\\xd9\\\\x2f\\\\x00\\\\x00\\\\x48\\\\"
+        "x85\\\\xc0\\\\x74\\\\x02\\\\xff\\\\xd0\\\\x48\\\\x83\\\\xc4\\\\"
+        'x08\\\\xc3\\\\x00\\\\x00\\\\x00\\\\x00\\\\x00"\n'
+        "}"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+    segments = RawSegments(
+        raw_data,
+        RawProgramHeaders(raw_data, executable_header),
+    )
+
+    assert (
+        FormattedSegment(
+            segments.occurrence(
+                ProgramHeader.PT_LOAD,
+                ProgramHeader.PF_R | ProgramHeader.PF_X,
+            ),
+            as_json=True,
+        ).format()
+        == expected_output
+    )
+
+
+@pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_formatting_dynamic_entries(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_dynamic_entries(raw_data: bytearray) -> None:
     segments = RawSegments(
         raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
     )
     for segment in segments.all():
-        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+        if segment.header().fields()["p_type"] == ProgramHeader.PT_DYNAMIC:
             _format = FormattedDynamic(RawDynamic(segment)).format()
 
             assert re.match(
@@ -527,9 +583,7 @@ def test_formatting_dynamic_entries(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_formatting_dynamic_entries_as_json(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_formatting_dynamic_entries_as_json(raw_data: bytearray) -> None:
     patterns = [
         r'"dynamic"\s*:\s*\[',
         r'"tag"\s*:\s*"(DT_[A-Z_]+|0x[0-9a-f]+)"',
@@ -542,7 +596,7 @@ def test_formatting_dynamic_entries_as_json(
         raw_data, RawProgramHeaders(raw_data, RawExecutableHeader(raw_data))
     )
     for segment in segments.all():
-        if segment.header()["p_type"] == ProgramHeader.PT_DYNAMIC:
+        if segment.header().fields()["p_type"] == ProgramHeader.PT_DYNAMIC:
             _format = FormattedDynamic(
                 RawDynamic(segment), as_json=True
             ).format()

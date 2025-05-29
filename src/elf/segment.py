@@ -7,7 +7,7 @@ from src.elf.validation import Validatable
 
 class Segment(ABC):
     @abstractmethod
-    def header(self) -> dict[str, int]:
+    def header(self) -> ProgramHeader:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -26,6 +26,10 @@ class Segment(ABC):
 class Segments(ABC):
     @abstractmethod
     def all(self) -> list[Segment]:
+        pass  # pragma: no cover
+
+    @abstractmethod
+    def find(self, p_offset: int) -> Segment:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -107,8 +111,8 @@ class RawSegment(Segment):
         self.__raw_data = raw_data
         self.__header = header
 
-    def header(self) -> dict[str, int]:
-        return self.__header.fields()
+    def header(self) -> ProgramHeader:
+        return self.__header
 
     def raw_data(self) -> memoryview:
         fields = self.__header.fields()
@@ -121,7 +125,7 @@ class RawSegment(Segment):
     def replace(self, data: bytes) -> None:
         fields = self.__header.fields()
         if not (
-            self.__is_in_range(fields) and self.__is_valid_size(data, fields)
+            self.__is_in_range(fields) and len(data) == fields["p_filesz"]
         ):
             raise ValueError("Invalid segment size")
         self.__raw_data[
@@ -133,9 +137,6 @@ class RawSegment(Segment):
 
     def __is_in_range(self, fields: dict[str, int]) -> bool:
         return fields["p_offset"] + fields["p_filesz"] <= len(self.__raw_data)
-
-    def __is_valid_size(self, data: bytes, fields: dict[str, int]) -> bool:
-        return len(data) == fields["p_filesz"]
 
 
 class RawSegments(Segments):
@@ -149,9 +150,15 @@ class RawSegments(Segments):
             for program_header in self.__program_headers.all()
         ]
 
+    def find(self, p_offset: int) -> Segment:
+        for segment in self.all():
+            if segment.header().fields()["p_offset"] == p_offset:
+                return segment
+        raise ValueError(f"No segment found with p_offset {p_offset}")
+
     def occurrence(self, p_type: int, p_flags: int | None = None) -> Segment:
         for segment in self.all():
-            header = segment.header()
+            header = segment.header().fields()
             if header["p_type"] == p_type and (
                 p_flags is None or header["p_flags"] == p_flags
             ):

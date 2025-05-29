@@ -68,9 +68,11 @@ def test_raising_on_exceeding_segment_raw_data(raw_data: bytearray) -> None:
         raw_data,
         RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
     ).all()[0]
-    program_header = RawProgramHeader(raw_data, segment.header()["p_offset"])
+    program_header = RawProgramHeader(
+        raw_data, segment.header().fields()["p_offset"]
+    )
 
-    fields = segment.header()
+    fields = segment.header().fields()
     fields["p_offset"] = exceeding_size
     program_header.change(fields)
 
@@ -84,23 +86,21 @@ def test_raising_on_exceeding_segment_raw_data(raw_data: bytearray) -> None:
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
 def test_replacing_elf_magic_with_fun(raw_data: bytearray) -> None:
-    segments = RawSegments(
+    p_offset = 0
+
+    segment = RawSegments(
         raw_data,
         RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
-    ).all()
+    ).find(p_offset)
 
-    for segment in segments:
-        if (
-            segment.header()["p_type"] == 1
-            and segment.header()["p_offset"] == 0
-        ):
-            segment_data = bytearray(segment.raw_data())
-            assert segment_data[:4] == b"\x7fELF"
+    data = segment.raw_data()
 
-            segment_data[:4] = b"\x7fFUN"
-            segment.replace(bytes(segment_data))
+    assert data[:4] == b"\x7fELF"
 
-            assert segment.raw_data()[:4] == b"\x7fFUN"
+    data[:4] = b"\x7fFUN"
+    segment.replace(bytes(data))
+
+    assert segment.raw_data()[:4] == b"\x7fFUN"
 
 
 @pytest.mark.parametrize(
@@ -123,7 +123,24 @@ def test_returning_segment_raw_data(raw_data: bytearray) -> None:
         RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
     )
     for segment in segments.all():
-        assert len(segment.raw_data()) == segment.header()["p_filesz"]
+        assert len(segment.raw_data()) == segment.header().fields()["p_filesz"]
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_finding_segment_by_nonexistent_offset(
+    raw_data: bytearray,
+) -> None:
+    p_offset = 123
+
+    with pytest.raises(
+        ValueError, match=f"No segment found with p_offset {p_offset}"
+    ):
+        RawSegments(
+            raw_data,
+            RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
+        ).find(p_offset)
 
 
 @pytest.mark.parametrize(

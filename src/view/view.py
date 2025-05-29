@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from src.elf.executable_header import ExecutableHeader
 from src.elf.program_header import ProgramHeader
 from src.elf.section import Disassembly, Section, Sections, Symbol, SymbolTable
-from src.elf.segment import Dynamic, DynamicEntry, Segments
+from src.elf.segment import Dynamic, DynamicEntry, Segment, Segments
 
 
 class Formattable(ABC):
@@ -31,12 +31,12 @@ class FormattedExecutableHeader(Formattable):
         e_ident = fields["e_ident"]
         return (
             "Executable Header:\n"
-            f"  Magic: {self.__hex(e_ident['EI_MAG'])}\n"
-            f"  Class: {e_ident['EI_CLASS']}\n"
-            f"  Data: {e_ident['EI_DATA']}\n"
-            f"  Version: {e_ident['EI_VERSION']}\n"
-            f"  OS/ABI: {e_ident['EI_OSABI']}\n"
-            f"  ABI Version: {e_ident['EI_ABIVERSION']}\n"
+            f"  Magic: {self.__hex(e_ident['ei_mag'])}\n"
+            f"  Class: {e_ident['ei_class']}\n"
+            f"  Data: {e_ident['ei_data']}\n"
+            f"  Version: {e_ident['ei_version']}\n"
+            f"  OS/ABI: {e_ident['ei_osabi']}\n"
+            f"  ABI Version: {e_ident['ei_abiversion']}\n"
             f"  Type: {fields['e_type']}\n"
             f"  Machine: {fields['e_machine']}\n"
             f"  Version: {fields['e_version']}\n"
@@ -49,13 +49,13 @@ class FormattedExecutableHeader(Formattable):
             f"  Number of program headers: {fields['e_phnum']}\n"
             f"  Section header entry size: {fields['e_shentsize']}\n"
             f"  Number of section headers: {fields['e_shnum']}\n"
-            f"  Section header string table index: {fields['e_shstrndx']}\n"
+            f"  Section header string table index: {fields['e_shstrndx']}"
         )
 
     def __json(self, executable_header: ExecutableHeader) -> str:
         fields = executable_header.fields()
-        fields["e_ident"]["EI_MAG"] = self.__hex(fields["e_ident"]["EI_MAG"])
-        fields["e_ident"]["EI_PAD"] = self.__hex(fields["e_ident"]["EI_PAD"])
+        fields["e_ident"]["ei_mag"] = self.__hex(fields["e_ident"]["ei_mag"])
+        fields["e_ident"]["ei_pad"] = self.__hex(fields["e_ident"]["ei_pad"])
         return json.dumps({"executable_header": fields}, indent=2)
 
     def __hex(self, value: bytes) -> str:
@@ -77,9 +77,9 @@ class FormattedSection(Formattable):
             return self.__text(self.__section, self.__full)
 
     def __text(self, section: Section, full: bool) -> str:
-        header = section.header()
+        header = section.header().fields()
         data = self.__data(self.__section, full)
-        suffix = self.__truncation_suffix(data, full)
+        data_length = len(data)
         return (
             "Section Header:\n"
             f"  Name: {header['sh_name']}\n"
@@ -94,14 +94,14 @@ class FormattedSection(Formattable):
             f"  Section entry size: {header['sh_entsize']}\n"
             "Section:\n"
             f"  Name: {self.__section.name()}\n"
-            f"  Data: {self.__hex_dump(data)}{suffix}\n"
-            f"  ASCII: {self.__ascii_dump(data)}{suffix}\n"
+            f"  Data ({data_length} bytes): {self.__hex_dump(data)}\n"
+            f"  ASCII ({data_length} bytes): {self.__ascii_dump(data)}"
         )
 
     def __json(self, section: Section, full: bool) -> str:
         return json.dumps(
             {
-                "section_header": section.header(),
+                "section_header": section.header().fields(),
                 "name": section.name(),
                 "data": self.__hex_dump(self.__data(section, full)),
             },
@@ -113,17 +113,14 @@ class FormattedSection(Formattable):
         return data.tobytes() if full else data[:32].tobytes()
 
     def __hex_dump(self, data: bytes) -> str:
-        return " ".join(f"{byte:02x}" for byte in data) if data else "---"
+        return "".join(f"\\x{byte:02x}" for byte in data) if data else "-"
 
     def __ascii_dump(self, data: bytes) -> str:
         return (
             "".join(chr(b) if 32 <= b <= 126 else "." for b in data)
             if data
-            else "---"
+            else "-"
         )
-
-    def __truncation_suffix(self, data: bytes, full: bool) -> str:
-        return " ..." if not full and data else ""
 
 
 class FormattedSections(Formattable):
@@ -144,7 +141,7 @@ class FormattedSections(Formattable):
             f"{'Link':<5} {'Info':<5} {'Align':<6} {'ES':<3}"
         ]
         for index, section in enumerate(sections.all()):
-            header = section.header()
+            header = section.header().fields()
             name = self.__name(section, header)
             lines.append(
                 f"{f'[{index}]':<4} {name:<25} "
@@ -163,7 +160,7 @@ class FormattedSections(Formattable):
             {
                 "sections": [
                     {
-                        "section_header": section.header(),
+                        "section_header": section.header().fields(),
                         "name": section.name(),
                     }
                     for section in sections.all()
@@ -308,7 +305,7 @@ class FormattedSegments(Formattable):
             f"{'MemSize':<10} {'Align':<6}"
         ]
         for index, segment in enumerate(segments.all()):
-            header = segment.header()
+            header = segment.header().fields()
             lines.append(
                 f"{f'[{index}]':<4} "
                 f"{self.__type(header['p_type']):<17} "
@@ -332,7 +329,7 @@ class FormattedSegments(Formattable):
                         "flags": self.__flags(header["p_flags"]),
                     }
                     for header in (
-                        segment.header() for segment in segments.all()
+                        segment.header().fields() for segment in segments.all()
                     )
                 ]
             },
@@ -362,6 +359,65 @@ class FormattedSegments(Formattable):
                 "W" if p_flags & ProgramHeader.PF_W else "",
                 "E" if p_flags & ProgramHeader.PF_X else "",
             ]
+        )
+
+
+class FormattedSegment(Formattable):
+    def __init__(
+        self, segment: Segment, full: bool = False, as_json: bool = False
+    ):
+        self.__segment = segment
+        self.__full = full
+        self.__as_json = as_json
+
+    def format(self) -> str:
+        if self.__as_json:
+            return self.__json(self.__segment, self.__full)
+        else:
+            return self.__text(self.__segment, self.__full)
+
+    def __text(self, segment: Segment, full: bool) -> str:
+        header = segment.header().fields()
+        data = self.__data(segment, full)
+        data_length = len(data)
+        return (
+            "Program Header:\n"
+            f"  Type: {header['p_type']}\n"
+            f"  Flags: 0x{header['p_flags']:x}\n"
+            f"  Offset: 0x{header['p_offset']:x}\n"
+            f"  Virtual address: 0x{header['p_vaddr']:x}\n"
+            f"  Physical address: 0x{header['p_paddr']:x}\n"
+            f"  File size: {header['p_filesz']} bytes\n"
+            f"  Memory size: {header['p_memsz']} bytes\n"
+            f"  Alignment: {header['p_align']}\n"
+            "Segment:\n"
+            f"  Type: {segment.type()}\n"
+            f"  Data ({data_length} bytes): {self.__hex_dump(data)}\n"
+            f"  ASCII ({data_length} bytes): {self.__ascii_dump(data)}"
+        )
+
+    def __json(self, segment: Segment, full: bool) -> str:
+        return json.dumps(
+            {
+                "program_header": segment.header().fields(),
+                "type": segment.type(),
+                "data": self.__hex_dump(self.__data(segment, full)),
+            },
+            indent=2,
+        )
+
+    def __data(self, segment: Segment, full: bool) -> bytes:
+        data = segment.raw_data()
+        return data.tobytes() if full else data[:32].tobytes()
+
+    def __hex_dump(self, data: bytes) -> str:
+        return "".join(f"\\x{byte:02x}" for byte in data) if data else "-"
+
+    def __ascii_dump(self, data: bytes) -> str:
+        return (
+            "".join(chr(b) if 32 <= b <= 126 else "." for b in data)
+            if data
+            else "-"
         )
 
 

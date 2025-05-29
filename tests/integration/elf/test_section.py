@@ -281,6 +281,62 @@ def test_returning_symbol_table(raw_data: bytearray) -> None:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
+def test_finding_symbol(raw_data: bytearray) -> None:
+    expected_name = "_init"
+    expected_fields = {
+        "st_name": 473,
+        "st_info": 18,
+        "st_other": 2,
+        "st_shndx": 12,
+        "st_value": 4096,
+        "st_size": 0,
+    }
+    expected_type = 2
+    expected_visibility = 2
+    expected_bind = 1
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+    symtab = sections.find(".symtab")
+    strtab = sections.find(".strtab")
+
+    symbol: Symbol = ValidatedSymbolTable(
+        RawSymbolTable(symtab, RawStringTable(strtab))
+    ).find("_init")
+
+    assert symbol.name() == expected_name
+    assert symbol.fields() == expected_fields
+    assert symbol.type() == expected_type
+    assert symbol.visibility() == expected_visibility
+    assert symbol.bind() == expected_bind
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
+def test_raising_on_finding_nonexistent_symbol(raw_data: bytearray) -> None:
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+    symtab = sections.find(".symtab")
+    strtab = sections.find(".strtab")
+
+    with pytest.raises(ValueError, match="Symbol 'nonexistent' not found"):
+        ValidatedSymbolTable(
+            RawSymbolTable(symtab, RawStringTable(strtab))
+        ).find("nonexistent")
+
+
+@pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/binary"], indirect=True
+)
 def test_symbol_change_reflects_in_raw_data(raw_data: bytearray) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections = RawSections(

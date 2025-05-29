@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from src.elf.executable_header import ExecutableHeader
 from src.elf.program_header import ProgramHeader
 from src.elf.section import Disassembly, Section, Sections, Symbol, SymbolTable
-from src.elf.segment import Dynamic, DynamicEntry, Segments
+from src.elf.segment import Dynamic, DynamicEntry, Segment, Segments
 
 
 class Formattable(ABC):
@@ -49,7 +49,7 @@ class FormattedExecutableHeader(Formattable):
             f"  Number of program headers: {fields['e_phnum']}\n"
             f"  Section header entry size: {fields['e_shentsize']}\n"
             f"  Number of section headers: {fields['e_shnum']}\n"
-            f"  Section header string table index: {fields['e_shstrndx']}\n"
+            f"  Section header string table index: {fields['e_shstrndx']}"
         )
 
     def __json(self, executable_header: ExecutableHeader) -> str:
@@ -95,7 +95,7 @@ class FormattedSection(Formattable):
             "Section:\n"
             f"  Name: {self.__section.name()}\n"
             f"  Data ({data_length} bytes): {self.__hex_dump(data)}\n"
-            f"  ASCII ({data_length} bytes): {self.__ascii_dump(data)}\n"
+            f"  ASCII ({data_length} bytes): {self.__ascii_dump(data)}"
         )
 
     def __json(self, section: Section, full: bool) -> str:
@@ -113,7 +113,7 @@ class FormattedSection(Formattable):
         return data.tobytes() if full else data[:32].tobytes()
 
     def __hex_dump(self, data: bytes) -> str:
-        return " ".join(f"{byte:02x}" for byte in data) if data else "-"
+        return "".join(f"\\x{byte:02x}" for byte in data) if data else "-"
 
     def __ascii_dump(self, data: bytes) -> str:
         return (
@@ -359,6 +359,65 @@ class FormattedSegments(Formattable):
                 "W" if p_flags & ProgramHeader.PF_W else "",
                 "E" if p_flags & ProgramHeader.PF_X else "",
             ]
+        )
+
+
+class FormattedSegment(Formattable):
+    def __init__(
+        self, segment: Segment, full: bool = False, as_json: bool = False
+    ):
+        self.__segment = segment
+        self.__full = full
+        self.__as_json = as_json
+
+    def format(self) -> str:
+        if self.__as_json:
+            return self.__json(self.__segment, self.__full)
+        else:
+            return self.__text(self.__segment, self.__full)
+
+    def __text(self, segment: Segment, full: bool) -> str:
+        header = segment.header().fields()
+        data = self.__data(segment, full)
+        data_length = len(data)
+        return (
+            "Program Header:\n"
+            f"  Type: {header['p_type']}\n"
+            f"  Flags: 0x{header['p_flags']:x}\n"
+            f"  Offset: 0x{header['p_offset']:x}\n"
+            f"  Virtual address: 0x{header['p_vaddr']:x}\n"
+            f"  Physical address: 0x{header['p_paddr']:x}\n"
+            f"  File size: {header['p_filesz']} bytes\n"
+            f"  Memory size: {header['p_memsz']} bytes\n"
+            f"  Alignment: {header['p_align']}\n"
+            "Segment:\n"
+            f"  Type: {segment.type()}\n"
+            f"  Data ({data_length} bytes): {self.__hex_dump(data)}\n"
+            f"  ASCII ({data_length} bytes): {self.__ascii_dump(data)}"
+        )
+
+    def __json(self, segment: Segment, full: bool) -> str:
+        return json.dumps(
+            {
+                "program_header": segment.header().fields(),
+                "type": segment.type(),
+                "data": self.__hex_dump(self.__data(segment, full)),
+            },
+            indent=2,
+        )
+
+    def __data(self, segment: Segment, full: bool) -> bytes:
+        data = segment.raw_data()
+        return data.tobytes() if full else data[:32].tobytes()
+
+    def __hex_dump(self, data: bytes) -> str:
+        return "".join(f"\\x{byte:02x}" for byte in data) if data else "-"
+
+    def __ascii_dump(self, data: bytes) -> str:
+        return (
+            "".join(chr(b) if 32 <= b <= 126 else "." for b in data)
+            if data
+            else "-"
         )
 
 

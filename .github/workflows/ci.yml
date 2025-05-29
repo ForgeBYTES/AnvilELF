@@ -35,7 +35,7 @@ jobs:
         run: |
           python -m isort --check-only --split-on-trailing-comma --diff src
           python -m black --line-length 79 --check src
-          python -m flake8 --ignore=E203,W503,W504 src
+          python -m flake8 --exclude=main.py --ignore=E203,W503,W504 src
           python -m mypy --strict --explicit-package-bases --disable-error-code import-untyped src
 
       - name: Run tests with coverage

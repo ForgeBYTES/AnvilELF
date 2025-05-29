@@ -139,6 +139,10 @@ class SymbolTable(ABC):
     def symbols(self) -> list[Symbol]:
         pass  # pragma: no cover
 
+    @abstractmethod
+    def find(self, name: str) -> Symbol:
+        pass  # pragma: no cover
+
 
 class RawSection(Section):
     def __init__(
@@ -349,6 +353,12 @@ class RawSymbolTable(SymbolTable):
             for offset in range(0, len(data), self._ENTRY_SIZE)
         ]
 
+    def find(self, name: str) -> Symbol:
+        for symbol in self.symbols():
+            if symbol.name() == name:
+                return symbol
+        raise ValueError(f"Symbol '{name}' not found")
+
 
 class ValidatedSymbolTable(SymbolTable, Validatable):
     def __init__(self, origin: SymbolTable):
@@ -356,6 +366,9 @@ class ValidatedSymbolTable(SymbolTable, Validatable):
 
     def symbols(self) -> list[Symbol]:
         return [ValidatedSymbol(symbol) for symbol in self.__origin.symbols()]
+
+    def find(self, name: str) -> Symbol:
+        return ValidatedSymbol(self.__origin.find(name))
 
     def validate(self) -> None:
         for symbol in self.__origin.symbols():

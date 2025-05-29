@@ -147,6 +147,9 @@ class ValidatedExecutableHeader(ExecutableHeader, Validatable):
                 case "e_type":
                     if value not in self.TYPES:
                         invalid_fields[field] = value
+                case "e_machine":
+                    if value != self.EM_X86_64:
+                        invalid_fields[field] = value
                 case "e_entry":
                     if value <= 0:
                         invalid_fields[field] = value
@@ -179,6 +182,9 @@ class ValidatedExecutableHeader(ExecutableHeader, Validatable):
             match field:
                 case "ei_mag":
                     if value != self.MAGIC_VALUE:
+                        invalid_fields[field] = value
+                case "ei_class":
+                    if value != ExecutableHeader.ELFCLASS64:
                         invalid_fields[field] = value
                 case "ei_data":
                     if value not in self.ENDIANNESS:

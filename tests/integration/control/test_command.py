@@ -1,7 +1,7 @@
 import re
+from typing import Generator
 
 import pytest
-from _pytest.capture import CaptureFixture
 from _pytest.fixtures import FixtureRequest
 
 from src.control.command import (
@@ -10,15 +10,23 @@ from src.control.command import (
     ExecutableHeaderCommand,
     FiniCommand,
     InitCommand,
+    MutateExecutableHeaderCommand,
+    MutateProgramHeaderCommand,
+    MutateSectionHeaderCommand,
+    MutateSymbolCommand,
     PltCommand,
+    ReplaceSectionCommand,
+    ReplaceSegmentCommand,
     SectionCommand,
     SectionsCommand,
+    SegmentCommand,
     SegmentsCommand,
     SymtabCommand,
     TextCommand,
 )
+from src.elf.binary import RawBinary
 from src.elf.executable_header import RawExecutableHeader
-from src.elf.program_header import RawProgramHeaders
+from src.elf.program_header import ProgramHeader, RawProgramHeaders
 from src.elf.section import RawSections
 from src.elf.section_header import RawSectionHeaders
 from src.elf.segment import RawSegments
@@ -38,7 +46,7 @@ def raw_data(request: FixtureRequest) -> bytearray:
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
 def test_executable_header_command_with_all_flags(
-    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
+    raw_data: bytearray, validated: bool
 ) -> None:
     expected_output = (
         "Executable Header:\n"
@@ -60,7 +68,7 @@ def test_executable_header_command_with_all_flags(
         "  Number of program headers: 13\n"
         "  Section header entry size: 64\n"
         "  Number of section headers: 39\n"
-        "  Section header string table index: 38\n"
+        "  Section header string table index: 38"
     )
 
     command = ExecutableHeaderCommand(RawExecutableHeader(raw_data))
@@ -121,7 +129,7 @@ def test_executable_header_command_with_32_bit_binary(
     indirect=True,
 )
 def test_sections_command_with_validate_flag(
-    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
+    raw_data: bytearray, validated: bool
 ) -> None:
     executable_header = RawExecutableHeader(raw_data)
     sections_headers = RawSectionHeaders(raw_data, executable_header)
@@ -192,9 +200,7 @@ def test_sections_command_with_corrupted_binary_and_validate_flag(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_section_command(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_section_command(raw_data: bytearray) -> None:
     patterns = [
         r"Section Header:\n\s+Name:\s+\d+",
         r"Type:\s+\d+",
@@ -207,7 +213,7 @@ def test_section_command(
         r"Address alignment:\s+\d+",
         r"Section entry size:\s+\d+",
         r"Section:\n\s+Name:\s+\.[\w\.]+",
-        r"Data \(\d+ bytes\):\s+([0-9a-fA-F]{2} ?)+",
+        r"Data \(\d+ bytes\):\s+(\\x[0-9a-fA-F]{2})+",
         r"ASCII \(\d+ bytes\):\s+.+",
     ]
 
@@ -232,9 +238,7 @@ def test_section_command(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
-def test_section_command_with_full_flag(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_section_command_with_full_flag(raw_data: bytearray) -> None:
     patterns = [
         r"Section Header:\n\s+Name:\s+\d+",
         r"Type:\s+\d+",
@@ -247,7 +251,7 @@ def test_section_command_with_full_flag(
         r"Address alignment:\s+\d+",
         r"Section entry size:\s+\d+",
         r"Section:\n\s+Name:\s+\.[\w\.]+",
-        r"Data \(\d+ bytes\):\s+([0-9a-fA-F]{2} ?)",
+        r"Data \(\d+ bytes\):\s+(\\x[0-9a-fA-F]{2})+",
         r"ASCII \(\d+ bytes\):\s+.",
     ]
 
@@ -271,7 +275,7 @@ def test_section_command_with_full_flag(
     indirect=True,
 )
 def test_section_command_with_stripped_section_headers(
-    raw_data: bytearray, capsys: CaptureFixture[str]
+    raw_data: bytearray,
 ) -> None:
     expected_zero_sh_name = "0"
     expected_output = (
@@ -289,7 +293,7 @@ def test_section_command_with_stripped_section_headers(
         "Section:\n"
         "  Name: 0\n"
         "  Data (0 bytes): -\n"
-        "  ASCII (0 bytes): -\n"
+        "  ASCII (0 bytes): -"
     )
 
     executable_header = RawExecutableHeader(raw_data)
@@ -313,7 +317,7 @@ def test_section_command_with_stripped_section_headers(
     indirect=True,
 )
 def test_section_command_with_stripped_section_headers_and_full_flag(
-    raw_data: bytearray, capsys: CaptureFixture[str]
+    raw_data: bytearray,
 ) -> None:
     expected_zero_sh_name = "0"
     expected_output = (
@@ -331,7 +335,7 @@ def test_section_command_with_stripped_section_headers_and_full_flag(
         "Section:\n"
         "  Name: 0\n"
         "  Data (0 bytes): -\n"
-        "  ASCII (0 bytes): -\n"
+        "  ASCII (0 bytes): -"
     )
 
     executable_header = RawExecutableHeader(raw_data)
@@ -360,7 +364,7 @@ def test_section_command_with_stripped_section_headers_and_full_flag(
     "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
 )
 def test_symbol_table_command_with_all_flags(
-    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
+    raw_data: bytearray, validated: bool
 ) -> None:
     executable_header = RawExecutableHeader(raw_data)
 
@@ -445,9 +449,7 @@ def test_symtab_command_with_corrupted_binary_and_validate_flag(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_text_command(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_text_command(raw_data: bytearray) -> None:
     expected_output = (
         "00001060: endbr64\n"
         "00001064: xor ebp, ebp\n"
@@ -482,7 +484,7 @@ def test_text_command(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary-2"], indirect=True
 )
-def test_plt_command(raw_data: bytearray, capsys: CaptureFixture[str]) -> None:
+def test_plt_command(raw_data: bytearray) -> None:
     expected_output = (
         "00001020: push qword ptr [rip + 0x2f72]\n"
         "00001026: bnd jmp qword ptr [rip + 0x2f73]\n"
@@ -515,9 +517,7 @@ def test_plt_command(raw_data: bytearray, capsys: CaptureFixture[str]) -> None:
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_init_command(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_init_command(raw_data: bytearray) -> None:
     expected_output = (
         "00001000: endbr64\n"
         "00001004: sub rsp, 8\n"
@@ -547,9 +547,7 @@ def test_init_command(
 @pytest.mark.parametrize(
     "raw_data", ["tests/samples/binaries/binary"], indirect=True
 )
-def test_fini_command(
-    raw_data: bytearray, capsys: CaptureFixture[str]
-) -> None:
+def test_fini_command(raw_data: bytearray) -> None:
     expected_output = (
         "00001178: endbr64\n"
         "0000117c: sub rsp, 8\n"
@@ -621,7 +619,7 @@ def test_section_command_raising_on_nonexistent_section(
     indirect=True,
 )
 def test_segments_command_with_all_flags(
-    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
+    raw_data: bytearray, validated: bool
 ) -> None:
     program_headers = RawProgramHeaders(
         raw_data, RawExecutableHeader(raw_data)
@@ -690,6 +688,48 @@ def test_segments_command_with_corrupted_binary_and_validate_flag(
 
 
 @pytest.mark.parametrize(
+    "raw_data", ["tests/samples/binaries/stripped-binary"], indirect=True
+)
+def test_segment_command_with_all_flags(raw_data: bytearray) -> None:
+    patterns = [
+        r"Program Header:\n\s+Type:\s+\d+",
+        r"Flags:\s+0x[0-9a-fA-F]+",
+        r"Offset:\s+0x[0-9a-fA-F]+",
+        r"Virtual address:\s+0x[0-9a-fA-F]+",
+        r"Physical address:\s+0x[0-9a-fA-F]+",
+        r"File size:\s+\d+\s+bytes",
+        r"Memory size:\s+\d+\s+bytes",
+        r"Alignment:\s+\d+",
+        r"Segment:\n\s+Type:\s+\d+",
+        r"Data \(\d+ bytes\):\s+(\\x[0-9a-fA-F]{2})+",
+        r"ASCII \(\d+ bytes\):\s+.",
+    ]
+
+    executable_header = RawExecutableHeader(raw_data)
+    segments = RawSegments(
+        raw_data,
+        RawProgramHeaders(raw_data, executable_header),
+    )
+    p_offset = (
+        segments.occurrence(
+            ProgramHeader.PT_LOAD,
+            ProgramHeader.PF_R | ProgramHeader.PF_X,
+        )
+        .header()
+        .fields()["p_offset"]
+    )
+
+    command = SegmentCommand(segments)
+
+    assert command.name() == "segment"
+
+    output = command.output(["--offset", f"{p_offset}", "--full"])
+
+    for pattern in patterns:
+        assert re.search(pattern, output) is not None
+
+
+@pytest.mark.parametrize(
     "validated",
     [True, False],
 )
@@ -701,9 +741,7 @@ def test_segments_command_with_corrupted_binary_and_validate_flag(
     ],
     indirect=True,
 )
-def test_dynamic_command(
-    raw_data: bytearray, capsys: CaptureFixture[str], validated: bool
-) -> None:
+def test_dynamic_command(raw_data: bytearray, validated: bool) -> None:
     command = DynamicCommand(
         RawSegments(
             raw_data,
@@ -747,3 +785,388 @@ def test_dynamic_command_with_corrupted_binary_and_validate_flag(
 
     with pytest.raises(ValueError, match=re.escape(expected_error)):
         command.output(["--validate"])
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/temporary_binaries/binary"],
+    indirect=True,
+)
+def test_mutate_header_command(
+    prepare_temporary_binaries: Generator[None, None, None],
+    raw_data: bytearray,
+) -> None:
+    original_ei_data = 1
+    original_e_type = 3
+    expected_ei_data = 2
+    expected_e_type = 1
+
+    executable_header = RawExecutableHeader(raw_data)
+
+    original_fields = executable_header.fields()
+
+    assert original_fields["e_type"] == original_e_type
+    assert original_fields["e_ident"]["ei_data"] == original_ei_data
+
+    command = MutateExecutableHeaderCommand(
+        executable_header,
+        RawBinary("tests/samples/temporary_binaries/binary"),
+    )
+
+    assert command.name() == "mutate-header"
+
+    assert (
+        command.output(
+            [
+                "--field",
+                "e_type",
+                "--value",
+                f"{expected_e_type}",
+                "--validate",
+            ]
+        )
+        == f"Field 'e_type' mutated to {expected_e_type}"
+    )
+
+    assert executable_header.fields()["e_type"] == expected_e_type
+
+    assert (
+        command.output(
+            [
+                "--field",
+                "ei_data",
+                "--value",
+                f"{expected_ei_data}",
+                "--validate",
+            ]
+        )
+        == f"Field 'ei_data' mutated to {expected_ei_data}"
+    )
+
+    assert executable_header.fields()["e_ident"]["ei_data"] == expected_ei_data
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/temporary_binaries/binary"],
+    indirect=True,
+)
+def test_mutate_section_header_command(
+    prepare_temporary_binaries: Generator[None, None, None],
+    raw_data: bytearray,
+) -> None:
+    original_sh_flags = 6
+    expected_sh_flags = 7
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    assert (
+        sections.find(".text").header().fields()["sh_flags"]
+        == original_sh_flags
+    )
+
+    command = MutateSectionHeaderCommand(
+        sections,
+        RawSectionHeaders(
+            raw_data,
+            executable_header,
+        ),
+        RawBinary("tests/samples/temporary_binaries/binary"),
+    )
+
+    assert command.name() == "mutate-section-header"
+
+    assert (
+        command.output(
+            [
+                "--section",
+                ".text",
+                "--field",
+                "sh_flags",
+                "--value",
+                f"{expected_sh_flags}",
+                "--validate",
+            ]
+        )
+        == f"Field 'sh_flags' mutated to {expected_sh_flags}"
+    )
+
+    assert (
+        sections.find(".text").header().fields()["sh_flags"]
+        == expected_sh_flags
+    )
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/temporary_binaries/binary"],
+    indirect=True,
+)
+def test_mutate_program_header_command(
+    prepare_temporary_binaries: Generator[None, None, None],
+    raw_data: bytearray,
+) -> None:
+    original_p_flags = ProgramHeader.PF_R | ProgramHeader.PF_X
+    expected_p_flags = (
+        ProgramHeader.PF_R | ProgramHeader.PF_X | ProgramHeader.PF_W
+    )
+
+    segments = RawSegments(
+        raw_data,
+        RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
+    )
+    segment = segments.occurrence(ProgramHeader.PT_LOAD, original_p_flags)
+
+    p_offset = segment.header().fields()["p_offset"]
+
+    assert segment.header().fields()["p_flags"] == original_p_flags
+
+    command = MutateProgramHeaderCommand(
+        segments,
+        RawBinary("tests/samples/temporary_binaries/binary"),
+    )
+
+    assert command.name() == "mutate-program-header"
+
+    assert (
+        command.output(
+            [
+                "--offset",
+                f"{p_offset}",
+                "--field",
+                "p_flags",
+                "--value",
+                f"{expected_p_flags}",
+                "--validate",
+            ]
+        )
+        == f"Field 'p_flags' mutated to {expected_p_flags}"
+    )
+
+    assert segment.header().fields()["p_flags"] == expected_p_flags
+
+
+@pytest.mark.parametrize(
+    "symbol_table, name, field, value",
+    [
+        (
+            ".symtab",
+            "_init",
+            "st_info",
+            "0",
+        ),
+        (
+            ".dynsym",
+            "__libc_start_main",
+            "st_info",
+            "0",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/temporary_binaries/binary"],
+    indirect=True,
+)
+def test_mutate_symbol_command(
+    prepare_temporary_binaries: Generator[None, None, None],
+    raw_data: bytearray,
+    symbol_table: str,
+    name: str,
+    field: str,
+    value: str,
+) -> None:
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    command = MutateSymbolCommand(
+        sections,
+        RawBinary("tests/samples/temporary_binaries/binary"),
+    )
+
+    assert command.name() == "mutate-symbol"
+
+    assert (
+        command.output(
+            [
+                "--symbol-table",
+                symbol_table,
+                "--name",
+                name,
+                "--field",
+                field,
+                "--value",
+                value,
+                "--validate",
+            ]
+        )
+        == f"Field '{field}' mutated to {value}"
+    )
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/temporary_binaries/stripped-binary"],
+    indirect=True,
+)
+def test_replace_section_command(
+    prepare_temporary_binaries: Generator[None, None, None],
+    raw_data: bytearray,
+) -> None:
+    data = (
+        b"\x00.shstrtab\x00.interp\x00.note.gnu.property\x00"
+        b".note.gnu.build-id\x00.note.ABI-tag\x00.gnu.hash\x00"
+        b".dynsym\x00.dynstr\x00.gnu.version\x00.gnu.version_r\x00"
+        b".rela.dyn\x00.rela.plt\x00.init\x00.plt.got\x00.plt.sec\x00"
+        b".code\x00.fini\x00.rodata\x00.eh_frame_hdr\x00.eh_frame\x00"
+        b".init_array\x00.fini_array\x00.dynamic\x00.data\x00.bss\x00"
+        b".comment\x00"
+    )
+
+    executable_header = RawExecutableHeader(raw_data)
+    sections = RawSections(
+        raw_data,
+        RawSectionHeaders(raw_data, executable_header),
+        executable_header,
+    )
+
+    command = ReplaceSectionCommand(
+        sections,
+        RawBinary("tests/samples/temporary_binaries/stripped-binary"),
+    )
+
+    assert command.name() == "replace-section"
+
+    text_data = sections.find(".text").raw_data().tobytes()
+
+    assert (
+        command.output(
+            [
+                "--section",
+                ".shstrtab",
+                "--bytes",
+                "".join(f"\\x{byte:02x}" for byte in data),
+            ]
+        )
+        == "Section data replaced"
+    )
+
+    assert sections.find(".code").raw_data().tobytes() == text_data
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/temporary_binaries/binary"],
+    indirect=True,
+)
+def test_replace_segment_command(
+    prepare_temporary_binaries: Generator[None, None, None],
+    raw_data: bytearray,
+) -> None:
+    p_offset = 0
+
+    segments = RawSegments(
+        raw_data,
+        RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
+    )
+    segment = segments.find(p_offset)
+
+    data = segment.raw_data()
+
+    assert data[:4] == b"\x7fELF"
+
+    data[:4] = b"\x7fFUN"
+
+    command = ReplaceSegmentCommand(
+        segments,
+        RawBinary("tests/samples/temporary_binaries/binary"),
+    )
+
+    assert command.name() == "replace-segment"
+
+    assert (
+        command.output(
+            [
+                "--offset",
+                f"{p_offset}",
+                "--bytes",
+                "".join(f"\\x{byte:02x}" for byte in data),
+            ]
+        )
+        == "Segment data replaced"
+    )
+
+    assert segment.raw_data().tobytes()[:4] == b"\x7fFUN"
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/temporary_binaries/binary"],
+    indirect=True,
+)
+def test_command_with_invalid_int_type(
+    prepare_temporary_binaries: Generator[None, None, None],
+    raw_data: bytearray,
+) -> None:
+    invalid_int = "invalid"
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Argument -v/--value: invalid integer value: 'invalid'"
+        ),
+    ):
+        MutateExecutableHeaderCommand(
+            RawExecutableHeader(raw_data),
+            RawBinary("tests/samples/temporary_binaries/binary"),
+        ).output(
+            [
+                "--field",
+                "e_type",
+                "--value",
+                f"{invalid_int}",
+                "--validate",
+            ]
+        )
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/temporary_binaries/binary"],
+    indirect=True,
+)
+def test_command_with_invalid_bytes_type(
+    prepare_temporary_binaries: Generator[None, None, None],
+    raw_data: bytearray,
+) -> None:
+    invalid_bytes = r"\u20ac"
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"Argument -b/--bytes: invalid byte string: '{invalid_bytes}'"
+        ),
+    ):
+        ReplaceSegmentCommand(
+            RawSegments(
+                raw_data,
+                RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
+            ),
+            RawBinary("tests/samples/temporary_binaries/binary"),
+        ).output(
+            [
+                "--offset",
+                "0",
+                "--bytes",
+                invalid_bytes,
+            ]
+        )

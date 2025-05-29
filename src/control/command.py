@@ -18,7 +18,9 @@ from src.elf.section import (
     RawStringTable,
     RawSymbolTable,
     Sections,
+    Symbol,
     SymbolTable,
+    ValidatedSymbol,
     ValidatedSymbolTable,
 )
 from src.elf.section_header import (
@@ -34,6 +36,7 @@ from src.view.view import (
     FormattedExecutableHeader,
     FormattedSection,
     FormattedSections,
+    FormattedSegment,
     FormattedSegments,
     FormattedSymbolTable,
 )
@@ -259,6 +262,31 @@ class SegmentsCommand(Command):
         return parser.parse_args(raw_arguments)
 
 
+class SegmentCommand(Command):
+    __NAME = "segment"
+
+    def __init__(self, segments: Segments):
+        self.__segments = segments
+
+    def name(self) -> str:
+        return self.__NAME
+
+    def output(self, raw_arguments: list[str]) -> str:
+        arguments = self.__arguments(self.__NAME, raw_arguments)
+        return FormattedSegment(
+            self.__segments.find(arguments.offset),
+            arguments.full,
+            arguments.json,
+        ).format()
+
+    def __arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
+        parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument("-o", "--offset", type=parser.int, required=True)
+        parser.add_argument("-f", "--full", action="store_true", default=False)
+        parser.add_argument("-j", "--json", action="store_true", default=False)
+        return parser.parse_args(raw_arguments)
+
+
 class DynamicCommand(Command):
     __NAME = "dynamic"
 
@@ -333,9 +361,7 @@ class MutateExecutableHeaderCommand(Command):
             ],
             required=True,
         )
-        parser.add_argument(
-            "-V", "--value", type=lambda x: int(x, 0), required=True
-        )
+        parser.add_argument("-V", "--value", type=parser.int, required=True)
         parser.add_argument(
             "-v", "--validate", action="store_true", default=False
         )
@@ -387,9 +413,7 @@ class MutateSectionHeaderCommand(Command):
         parser.add_argument(
             "-f", "--field", choices=self.__FIELDS, required=True
         )
-        parser.add_argument(
-            "-V", "--value", type=lambda x: int(x, 0), required=True
-        )
+        parser.add_argument("-V", "--value", type=parser.int, required=True)
         parser.add_argument(
             "-v", "--validate", action="store_true", default=False
         )
@@ -431,16 +455,111 @@ class MutateProgramHeaderCommand(Command):
 
     def _arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
         parser = ArgumentParser(prog=name, add_help=False)
-        parser.add_argument(
-            "-o", "--offset", type=lambda x: int(x, 0), required=True
-        )
+        parser.add_argument("-o", "--offset", type=parser.int, required=True)
         parser.add_argument(
             "-f", "--field", choices=self.__FIELDS, required=True
         )
-        parser.add_argument(
-            "-V", "--value", type=lambda x: int(x, 0), required=True
-        )
+        parser.add_argument("-V", "--value", type=parser.int, required=True)
         parser.add_argument(
             "-v", "--validate", action="store_true", default=False
         )
+        return parser.parse_args(raw_arguments)
+
+
+class MutateSymbolCommand(Command):
+    __NAME = "mutate-symbol"
+    __FIELDS = Symbol.FIELDS
+
+    def __init__(self, sections: Sections, binary: Binary):
+        self.__sections = sections
+        self.__binary = binary
+
+    def name(self) -> str:
+        return self.__NAME
+
+    def output(self, raw_arguments: list[str]) -> str:
+        arguments = self._arguments(self.__NAME, raw_arguments)
+        string_table = RawStringTable(
+            self.__sections.find(
+                ".dynstr" if arguments.symbol_table == ".dynsym" else ".strtab"
+            )
+        )
+        symbol = RawSymbolTable(
+            self.__sections.find(arguments.symbol_table), string_table
+        ).find(arguments.name)
+        self.__mutate(
+            (ValidatedSymbol(symbol) if arguments.validate else symbol),
+            arguments.field,
+            arguments.value,
+        )
+        self.__binary.save()
+        return f"Field '{arguments.field}' mutated to {arguments.value}"
+
+    def __mutate(self, symbol: Symbol, field: str, value: int) -> None:
+        fields = symbol.fields()
+        fields[field] = value
+        symbol.change(fields)
+
+    def _arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
+        parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument(
+            "-s",
+            "--symbol-table",
+            choices=[".symtab", ".dynsym"],
+            required=True,
+        )
+        parser.add_argument("-n", "--name", required=True)
+        parser.add_argument(
+            "-f", "--field", choices=self.__FIELDS, required=True
+        )
+        parser.add_argument("-V", "--value", type=parser.int, required=True)
+        parser.add_argument(
+            "-v", "--validate", action="store_true", default=False
+        )
+        return parser.parse_args(raw_arguments)
+
+
+class ReplaceSectionCommand(Command):
+    __NAME = "replace-section"
+
+    def __init__(self, sections: Sections, binary: Binary):
+        self.__sections = sections
+        self.__binary = binary
+
+    def name(self) -> str:
+        return self.__NAME
+
+    def output(self, raw_arguments: list[str]) -> str:
+        arguments = self._arguments(self.__NAME, raw_arguments)
+        self.__sections.find(arguments.section).replace(bytes(arguments.bytes))
+        self.__binary.save()
+        return "Section data replaced"
+
+    def _arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
+        parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument("-s", "--section", required=True)
+        parser.add_argument("-b", "--bytes", type=parser.bytes, required=True)
+        return parser.parse_args(raw_arguments)
+
+
+class ReplaceSegmentCommand(Command):
+    __NAME = "replace-segment"
+
+    def __init__(self, segments: Segments, binary: Binary):
+        self.__segments = segments
+        self.__binary = binary
+
+    def name(self) -> str:
+        return self.__NAME
+
+    def output(self, raw_arguments: list[str]) -> str:
+        arguments = self._arguments(self.__NAME, raw_arguments)
+        self.__segments.find(arguments.offset).replace(bytes(arguments.bytes))
+        self.__binary.save()
+        return "Segment data replaced"
+
+    def _arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
+        parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument("-o", "--offset", type=parser.int, required=True)
+        parser.add_argument("-b", "--bytes", type=parser.bytes, required=True)
         return parser.parse_args(raw_arguments)

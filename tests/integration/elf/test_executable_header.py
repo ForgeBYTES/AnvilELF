@@ -213,6 +213,11 @@ def test_raising_on_changing_invalid_e_ident_field(
             f"Executable header contains invalid values:\n"
             f"  e_flags={0xDEADBEEF}",
         ),
+        (
+            "e_machine",
+            3,
+            "Executable header contains invalid values:\n  e_machine=3",
+        ),
     ],
 )
 def test_raising_on_changing_field_with_invalid_value(
@@ -250,6 +255,11 @@ def test_raising_on_changing_field_with_invalid_value(
             "ei_version",
             2,
             "Executable header contains invalid values:\n  ei_version=2",
+        ),
+        (
+            "ei_class",
+            1,
+            "Executable header contains invalid values:\n  ei_class=1",
         ),
     ],
 )

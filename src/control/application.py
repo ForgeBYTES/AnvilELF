@@ -10,9 +10,13 @@ from src.control.command import (
     MutateExecutableHeaderCommand,
     MutateProgramHeaderCommand,
     MutateSectionHeaderCommand,
+    MutateSymbolCommand,
     PltCommand,
+    ReplaceSectionCommand,
+    ReplaceSegmentCommand,
     SectionCommand,
     SectionsCommand,
+    SegmentCommand,
     SegmentsCommand,
     SymtabCommand,
     TextCommand,
@@ -57,6 +61,7 @@ class Application:
                         SymtabCommand(sections),
                         DynsymCommand(sections),
                         SegmentsCommand(segments, program_headers),
+                        SegmentCommand(segments),
                         DynamicCommand(segments),
                         MutateExecutableHeaderCommand(
                             executable_header,
@@ -71,6 +76,9 @@ class Application:
                             segments,
                             binary,
                         ),
+                        MutateSymbolCommand(sections, binary),
+                        ReplaceSectionCommand(sections, binary),
+                        ReplaceSegmentCommand(segments, binary),
                     ],
                 )
             )

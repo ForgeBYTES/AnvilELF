@@ -27,11 +27,11 @@ fin [-j]                                                      Disassemble .fin s
 dynsym [-v] [-j]                                              Inspect .dynsym section
 symtab [-v] [-j]                                              Inspect .symtab section
 mutate-header -f FIELD -V VALUE [-v]                          Mutate executable header
-mutate-section-header -f FIELD -V VALUE [-v]                  Mutate section header
-mutate-program-header -f FIELD -V VALUE [-v]                  Mutate program header
+mutate-section-header -s SECTION -f FIELD -V VALUE [-v]       Mutate section header
+mutate-program-header -o OFFSET -f FIELD -V VALUE [-v]        Mutate program header
 mutate-symbol -s SYMBOL_TABLE -n NAME -f FIELD -V VALUE [-v]  Mutate symbol
-replace-section -s SECTION -b BYTES                           Replace section data
-replace-segment -o OFFSET -b BYTES                            Replace segment data
+replace-section -s SECTION -b \\xNN\\xNN                        Replace section data
+replace-segment -o OFFSET -b \\xNN\\xNN                         Replace segment data
 exit                                                          Exit the shell
 """
 

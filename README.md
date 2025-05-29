@@ -77,15 +77,15 @@ anvil> dynsym --validate
 # Mutate executable header
 anvil> mutate-header -f FIELD -V VALUE [-v]
 # Mutate section header 
-anvil> mutate-section-header -f FIELD -V VALUE [-v]
+anvil> mutate-section-header -s SECTION -f FIELD -V VALUE [-v]
 # Mutate program header
-anvil> mutate-program-header -f FIELD -V VALUE [-v]
+anvil> mutate-program-header -o OFFSET -f FIELD -V VALUE [-v]
 # Mutate symbol
 anvil> mutate-symbol -s SYMBOL_TABLE -n NAME -f FIELD -V VALUE [-v]
 # Replace section data
-anvil> replace-section -s SECTION -b BYTES
+anvil> replace-section -s SECTION -b \xNN\xNN
 # Replace segment data
-anvil> replace-segment -o OFFSET -b BYTES
+anvil> replace-segment -o OFFSET -b \xNN\xNN
 
 # Exit the shell
 anvil> exit

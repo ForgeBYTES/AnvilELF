@@ -10,6 +10,7 @@ from src.control.command import (
     ExecutableHeaderCommand,
     FiniCommand,
     InitCommand,
+    MutateDynamicCommand,
     MutateExecutableHeaderCommand,
     MutateProgramHeaderCommand,
     MutateSectionHeaderCommand,
@@ -1011,6 +1012,40 @@ def test_mutate_symbol_command(
         )
         == f"Field '{field}' mutated to {value}"
     )
+
+
+@pytest.mark.parametrize(
+    "raw_data",
+    ["tests/samples/temporary_binaries/binary"],
+    indirect=True,
+)
+def test_mutate_dynamic_command(
+    prepare_temporary_binaries: Generator[None, None, None],
+    raw_data: bytearray,
+) -> None:
+    command = MutateDynamicCommand(
+        RawSegments(
+            raw_data,
+            RawProgramHeaders(raw_data, RawExecutableHeader(raw_data)),
+        ),
+        RawBinary("tests/samples/temporary_binaries/binary"),
+    )
+
+    assert command.name() == "mutate-dynamic"
+
+    output = command.output(
+        [
+            "--index",
+            "19",
+            "--field",
+            "d_un",
+            "--value",
+            "42",
+            "--validate",
+        ]
+    )
+
+    assert output == "Field 'd_un' mutated to 42"
 
 
 @pytest.mark.parametrize(

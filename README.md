@@ -82,6 +82,8 @@ anvil> mutate-section-header -s SECTION -f FIELD -V VALUE [-v]
 anvil> mutate-program-header -o OFFSET -f FIELD -V VALUE [-v]
 # Mutate symbol
 anvil> mutate-symbol -s SYMBOL_TABLE -n NAME -f FIELD -V VALUE [-v]
+#Mutate dynamic
+anvil> mutate-dynamic -i INDEX -n NAME -f FIELD -V VALUE [-v]
 # Replace section data
 anvil> replace-section -s SECTION -b \xNN\xNN
 # Replace segment data

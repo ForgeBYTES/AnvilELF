@@ -29,7 +29,13 @@ from src.elf.section_header import (
     ValidatedSectionHeader,
     ValidatedSectionHeaders,
 )
-from src.elf.segment import RawDynamic, Segments, ValidatedDynamic
+from src.elf.segment import (
+    DynamicEntry,
+    RawDynamic,
+    Segments,
+    ValidatedDynamic,
+    ValidatedDynamicEntry,
+)
 from src.view.view import (
     FormattedDisassembly,
     FormattedDynamic,
@@ -515,6 +521,59 @@ class MutateSymbolCommand(Command):
         parser.add_argument("-V", "--value", type=parser.int, required=True)
         parser.add_argument(
             "-v", "--validate", action="store_true", default=False
+        )
+        return parser.parse_args(raw_arguments)
+
+
+class MutateDynamicCommand(Command):
+    __NAME = "mutate-dynamic"
+    __FIELDS = DynamicEntry.FIELDS
+
+    def __init__(self, segments: Segments, binary: Binary):
+        self.__segments = segments
+        self.__binary = binary
+
+    def name(self) -> str:
+        return self.__NAME
+
+    def output(self, raw_arguments: list[str]) -> str:
+        arguments = self._arguments(self.__NAME, raw_arguments)
+        entry = RawDynamic(
+            self.__segments.occurrence(ProgramHeader.PT_DYNAMIC)
+        ).all()[arguments.index]
+        self.__mutate(
+            ValidatedDynamicEntry(entry) if arguments.validate else entry,
+            arguments.field,
+            arguments.value,
+        )
+        self.__binary.save()
+        return f"Field '{arguments.field}' mutated to {arguments.value}"
+
+    def __mutate(self, entry: DynamicEntry, field: str, value: int) -> None:
+        fields = entry.fields()
+        fields[field] = value
+        entry.change(fields)
+
+    def _arguments(self, name: str, raw_arguments: list[str]) -> Namespace:
+        parser = ArgumentParser(prog=name, add_help=False)
+        parser.add_argument("-i", "--index", type=int, required=True)
+        parser.add_argument(
+            "-f",
+            "--field",
+            choices=self.__FIELDS,
+            required=True,
+        )
+        parser.add_argument(
+            "-V",
+            "--value",
+            type=parser.int,
+            required=True,
+        )
+        parser.add_argument(
+            "-v",
+            "--validate",
+            action="store_true",
+            default=False,
         )
         return parser.parse_args(raw_arguments)
 

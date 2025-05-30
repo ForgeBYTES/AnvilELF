@@ -30,6 +30,7 @@ mutate-header -f FIELD -V VALUE [-v]                          Mutate executable 
 mutate-section-header -s SECTION -f FIELD -V VALUE [-v]       Mutate section header
 mutate-program-header -o OFFSET -f FIELD -V VALUE [-v]        Mutate program header
 mutate-symbol -s SYMBOL_TABLE -n NAME -f FIELD -V VALUE [-v]  Mutate symbol
+mutate-dynamic -i INDEX -n NAME -f FIELD -V VALUE [-v]        Mutate dynamic
 replace-section -s SECTION -b \\xNN\\xNN                        Replace section data
 replace-segment -o OFFSET -b \\xNN\\xNN                         Replace segment data
 exit                                                          Exit the shell

@@ -348,7 +348,6 @@ def test_raising_on_zero_sh_entsize_in_sht_dynamic(
         (0x2, 0x1003, 8, False),
         (0x2, 0x1000, 1, True),
         (0x2, 0x1000, 0, True),
-        (0x0, 0x1003, 8, True),
     ],
 )
 @pytest.mark.parametrize(

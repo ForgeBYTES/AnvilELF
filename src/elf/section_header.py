@@ -200,10 +200,10 @@ class ValidatedSectionHeader(SectionHeader, Validatable):
         for field, value in fields.items():
             match field:
                 case "sh_type":
-                    if not self.__is_valid_type(value):
+                    if not self.__is_valid_sh_type(value):
                         invalid_fields[field] = value
                 case "sh_flags":
-                    if value & ~self.FLAGS != 0:
+                    if not self.__is_sh_flags_valid(value, fields):
                         invalid_fields[field] = value
                 case "sh_addralign":
                     if not self.__is_power_of_two(value):
@@ -236,13 +236,25 @@ class ValidatedSectionHeader(SectionHeader, Validatable):
                 )
             )
 
-    def __is_valid_type(self, sh_type: int) -> bool:
+    def __is_valid_sh_type(self, sh_type: int) -> bool:
         return (
             sh_type in self._TYPES
             or (self.SHT_LOOS <= sh_type <= self.SHT_HIOS)
             or (self.SHT_LOPROC <= sh_type <= self.SHT_HIPROC)
             or (self.SHT_LOUSER <= sh_type <= self.SHT_HIUSER)
         )
+
+    def __is_sh_flags_valid(self, value: int, fields: dict[str, int]) -> bool:
+        return (
+            value == 0
+            and fields["sh_type"]
+            in [
+                self.SHT_NULL,
+                self.SHT_SYMTAB,
+                self.SHT_STRTAB,
+                self.SHT_NOTE,
+            ]
+        ) or (value != 0 and value & ~self.FLAGS == 0)
 
     def __is_power_of_two(self, value: int) -> bool:
         return (value & (value - 1)) == 0

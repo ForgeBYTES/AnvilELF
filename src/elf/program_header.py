@@ -144,13 +144,10 @@ class ValidatedProgramHeader(ProgramHeader, Validatable):
         for field, value in fields.items():
             match field:
                 case "p_type":
-                    if not self.__is_valid_type(value):
+                    if not self.__is_valid_p_type(value):
                         invalid_fields[field] = value
                 case "p_flags":
-                    if (
-                        value == 0
-                        or value & ~(self.PF_X | self.PF_W | self.PF_R) != 0
-                    ):
+                    if not self.__is_valid_p_flags(value, fields):
                         invalid_fields[field] = value
                 case "p_align":
                     if not self.__is_power_of_two(value) and value != 0:
@@ -171,7 +168,7 @@ class ValidatedProgramHeader(ProgramHeader, Validatable):
                 )
             )
 
-    def __is_valid_type(self, p_type: int) -> bool:
+    def __is_valid_p_type(self, p_type: int) -> bool:
         return (
             p_type
             in [
@@ -186,6 +183,11 @@ class ValidatedProgramHeader(ProgramHeader, Validatable):
             ]
             or (self.PT_LOOS <= p_type <= self.PT_HIOS)
             or (self.PT_LOPROC <= p_type <= self.PT_HIPROC)
+        )
+
+    def __is_valid_p_flags(self, p_flags: int, fields: dict[str, int]) -> bool:
+        return (p_flags != 0 or fields["p_type"] != self.PT_LOAD) and (
+            p_flags & ~(self.PF_X | self.PF_W | self.PF_R) == 0
         )
 
     def __is_power_of_two(self, value: int) -> bool:
